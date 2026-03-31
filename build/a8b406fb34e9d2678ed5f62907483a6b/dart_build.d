@@ -1,0 +1,1 @@
+ /Users/matthew/.openclaw/workspace/domovnik/build/a8b406fb34e9d2678ed5f62907483a6b/dart_build_result.json:  /Users/matthew/.openclaw/workspace/domovnik/.dart_tool/package_config.json /Users/matthew/.openclaw/workspace/domovnik/pubspec.yaml /opt/homebrew/share/flutter/bin/cache/dart-sdk/version
