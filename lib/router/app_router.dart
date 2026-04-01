@@ -21,7 +21,8 @@ import '../features/polls/presentation/screens/poll_detail_screen.dart';
 import '../shared/widgets/loading_widget.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
+  // Watch auth state so the router rebuilds on sign-in / sign-out
+  ref.watch(authStateProvider);
 
   return GoRouter(
     initialLocation: '/login',
@@ -129,34 +130,58 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class _DashboardRedirect extends ConsumerWidget {
+class _DashboardRedirect extends ConsumerStatefulWidget {
   const _DashboardRedirect();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DashboardRedirect> createState() => _DashboardRedirectState();
+}
+
+class _DashboardRedirectState extends ConsumerState<_DashboardRedirect> {
+  int _retries = 0;
+  static const _maxRetries = 5;
+  static const _retryDelay = Duration(milliseconds: 800);
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
 
     return profileAsync.when(
       data: (profile) {
         if (profile == null) {
+          // Trigger may still be running (especially after email confirmation).
+          // Retry a few times before giving up and going to login.
+          if (_retries < _maxRetries) {
+            Future.delayed(_retryDelay, () {
+              if (mounted) {
+                setState(() => _retries++);
+                ref.invalidate(profileProvider);
+              }
+            });
+            return const Scaffold(body: LoadingWidget());
+          }
+          // Gave up – no profile found
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            context.go('/login');
+            if (mounted) context.go('/login');
           });
-          return const LoadingWidget();
+          return const Scaffold(body: LoadingWidget());
         }
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (profile.isManager) {
-            context.go('/manager/dashboard');
-          } else {
-            context.go('/resident/announcements');
+          if (mounted) {
+            if (profile.isManager) {
+              context.go('/manager/dashboard');
+            } else {
+              context.go('/resident/announcements');
+            }
           }
         });
-        return const LoadingWidget();
+        return const Scaffold(body: LoadingWidget());
       },
       loading: () => const Scaffold(body: LoadingWidget()),
       error: (e, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          context.go('/login');
+          if (mounted) context.go('/login');
         });
         return const Scaffold(body: LoadingWidget());
       },

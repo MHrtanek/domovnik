@@ -5,7 +5,6 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/theme/app_theme.dart';
 import 'router/app_router.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
 class DomovnikApp extends ConsumerStatefulWidget {
   const DomovnikApp({super.key});
@@ -36,10 +35,9 @@ class _DomovnikAppState extends ConsumerState<DomovnikApp> {
         Locale('en', 'US'),
       ],
       localizationsDelegates: const [
-	GlobalMaterialLocalizations.delegate,
- 	GlobalWidgetsLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
       ],
     );
   }

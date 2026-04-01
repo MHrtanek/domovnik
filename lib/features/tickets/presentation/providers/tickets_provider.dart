@@ -115,6 +115,9 @@ class UpdateTicketStatusNotifier extends AsyncNotifier<void> {
       await ref
           .read(ticketRepositoryProvider)
           .updateTicketStatus(ticketId: ticketId, status: status);
+      // Invalidate so the detail screen and list both reflect the new status
+      ref.invalidate(ticketDetailProvider(ticketId));
+      ref.invalidate(ticketsProvider);
     });
   }
 }
@@ -122,3 +125,9 @@ class UpdateTicketStatusNotifier extends AsyncNotifier<void> {
 final updateTicketStatusProvider =
     AsyncNotifierProvider<UpdateTicketStatusNotifier, void>(
         UpdateTicketStatusNotifier.new);
+
+// Top-level ticket detail provider – can be invalidated after status updates
+final ticketDetailProvider =
+    FutureProvider.family<TicketModel?, String>((ref, ticketId) async {
+  return ref.read(ticketRepositoryProvider).getTicket(ticketId);
+});

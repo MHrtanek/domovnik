@@ -65,12 +65,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
 
       if (mounted) {
+        // Supabase may require email confirmation before creating a session.
+        // Read the raw authNotifier result to distinguish the two cases.
         final authState = ref.read(authNotifierProvider);
         authState.when(
           data: (user) {
-            if (user != null) context.go('/dashboard');
+            if (user != null) {
+              // Email confirmation disabled OR auto-confirmed → go straight to app
+              context.go('/dashboard');
+            } else {
+              // Email confirmation enabled → user exists but no session yet.
+              // Show a message and return to login.
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Registrácia úspešná! Skontrolujte e-mail a potvrďte účet.',
+                  ),
+                  backgroundColor: AppColors.success,
+                  duration: Duration(seconds: 6),
+                ),
+              );
+              context.go('/login');
+            }
           },
-          loading: () {},
+          loading: () {
+            // Still resolving – router redirect will handle navigation
+            // once authStateProvider emits the new session.
+          },
           error: (e, _) => _showError(e.toString()),
         );
       }

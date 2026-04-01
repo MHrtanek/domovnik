@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/profile_repository.dart';
 import '../../models/profile_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';

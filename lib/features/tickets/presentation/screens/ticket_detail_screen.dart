@@ -9,7 +9,6 @@ import '../../../../shared/widgets/app_bar_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import '../../../../shared/widgets/status_badge.dart';
-import '../../data/ticket_repository.dart';
 import '../../models/ticket_model.dart';
 import '../providers/tickets_provider.dart';
 
@@ -19,11 +18,7 @@ class TicketDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ticketFuture = ref.watch(
-      FutureProvider.family<TicketModel?, String>((ref, id) async {
-        return ref.read(ticketRepositoryProvider).getTicket(id);
-      })(ticketId),
-    );
+    final ticketFuture = ref.watch(ticketDetailProvider(ticketId));
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
