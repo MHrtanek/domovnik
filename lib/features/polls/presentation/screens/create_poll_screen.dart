@@ -9,6 +9,9 @@ import '../../../../shared/widgets/app_bar_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../providers/polls_provider.dart';
 
+// Defined at class level to avoid re-construction and locale-init race on web
+final _dateFormat = DateFormat('d. M. yyyy');
+
 class CreatePollScreen extends ConsumerStatefulWidget {
   const CreatePollScreen({super.key});
 
@@ -61,7 +64,6 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
       initialDate: now.add(const Duration(days: 7)),
       firstDate: now,
       lastDate: now.add(const Duration(days: 365)),
-      locale: const Locale('sk'),
     );
     if (picked != null && mounted) {
       setState(() => _expiresAt = picked.add(const Duration(
@@ -124,8 +126,6 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('d. M. yyyy', 'sk');
-
     return Scaffold(
       appBar: const DomovnikAppBar(title: 'Nové hlasovanie'),
       body: LoadingOverlay(
@@ -234,7 +234,7 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                             Expanded(
                               child: Text(
                                 _expiresAt != null
-                                    ? 'Do: ${dateFormat.format(_expiresAt!)}'
+                                    ? 'Do: ${_dateFormat.format(_expiresAt!)}'
                                     : 'Bez obmedzenia',
                                 style: const TextStyle(
                                   color: AppColors.textSecondary,
