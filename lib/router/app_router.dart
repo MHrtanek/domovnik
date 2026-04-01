@@ -18,6 +18,8 @@ import '../features/announcements/presentation/screens/create_announcement_scree
 import '../features/polls/presentation/screens/polls_screen.dart';
 import '../features/polls/presentation/screens/create_poll_screen.dart';
 import '../features/polls/presentation/screens/poll_detail_screen.dart';
+import '../features/contacts/presentation/screens/contacts_screen.dart';
+import '../features/documents/presentation/screens/documents_screen.dart';
 import '../shared/widgets/loading_widget.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -70,6 +72,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const PollsScreen(),
           ),
           GoRoute(
+            path: '/resident/contacts',
+            builder: (context, state) => const ContactsScreen(),
+          ),
+          GoRoute(
+            path: '/resident/documents',
+            builder: (context, state) => const DocumentsScreen(),
+          ),
+          GoRoute(
             path: '/resident/profile',
             builder: (context, state) => const ProfileScreen(),
           ),
@@ -95,6 +105,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/manager/polls',
             builder: (context, state) => const PollsScreen(),
+          ),
+          GoRoute(
+            path: '/manager/contacts',
+            builder: (context, state) => const ContactsScreen(),
+          ),
+          GoRoute(
+            path: '/manager/documents',
+            builder: (context, state) => const DocumentsScreen(),
           ),
           GoRoute(
             path: '/manager/profile',
@@ -178,6 +196,8 @@ class ResidentShell extends StatelessWidget {
     '/resident/announcements',
     '/resident/tickets',
     '/resident/polls',
+    '/resident/contacts',
+    '/resident/documents',
     '/resident/profile',
   ];
 
@@ -191,6 +211,7 @@ class ResidentShell extends StatelessWidget {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex < 0 ? 0 : currentIndex,
         onTap: (i) => context.go(_tabs[i]),
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.campaign_outlined),
@@ -206,6 +227,16 @@ class ResidentShell extends StatelessWidget {
             icon: Icon(Icons.how_to_vote_outlined),
             activeIcon: Icon(Icons.how_to_vote),
             label: 'Hlasovanie',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.contacts_outlined),
+            activeIcon: Icon(Icons.contacts),
+            label: 'Kontakty',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder_outlined),
+            activeIcon: Icon(Icons.folder),
+            label: 'Dokumenty',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -229,6 +260,8 @@ class ManagerShell extends StatelessWidget {
     '/manager/announcements',
     '/manager/tickets',
     '/manager/polls',
+    '/manager/contacts',
+    '/manager/documents',
     '/manager/profile',
   ];
 
@@ -242,6 +275,7 @@ class ManagerShell extends StatelessWidget {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex < 0 ? 0 : currentIndex,
         onTap: (i) => context.go(_tabs[i]),
+        type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined),
@@ -262,6 +296,16 @@ class ManagerShell extends StatelessWidget {
             icon: Icon(Icons.how_to_vote_outlined),
             activeIcon: Icon(Icons.how_to_vote),
             label: 'Hlasovanie',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.contacts_outlined),
+            activeIcon: Icon(Icons.contacts),
+            label: 'Kontakty',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder_outlined),
+            activeIcon: Icon(Icons.folder),
+            label: 'Dokumenty',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
