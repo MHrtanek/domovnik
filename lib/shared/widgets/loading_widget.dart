@@ -44,12 +44,15 @@ class LoadingOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
+      fit: StackFit.expand,  // inherit parent constraints — no zero-height
       children: [
         child,
         if (isLoading)
-          Container(
-            color: Colors.black26,
-            child: const LoadingWidget(),
+          Positioned.fill(   // overlay fills whatever Stack occupies
+            child: Container(
+              color: Colors.black26,
+              child: const LoadingWidget(),
+            ),
           ),
       ],
     );
