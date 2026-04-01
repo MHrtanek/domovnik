@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,7 +24,10 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   TicketCategory _selectedCategory = TicketCategory.ine;
-  File? _selectedPhoto;
+
+  XFile? _selectedPhoto;     // XFile works on both web and mobile
+  Uint8List? _photoBytes;    // pre-loaded bytes for web preview
+
   bool _submitting = false;
 
   @override
@@ -33,31 +37,28 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickPhoto(ImageSource source) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
+    final picked = await picker.pickImage(
+      source: source,
       maxWidth: 1920,
       maxHeight: 1080,
       imageQuality: 85,
     );
-    if (pickedFile != null) {
-      setState(() => _selectedPhoto = File(pickedFile.path));
-    }
+    if (picked == null) return;
+
+    // Pre-load bytes once so we can use Image.memory on web
+    final bytes = await picked.readAsBytes();
+    setState(() {
+      _selectedPhoto = picked;
+      _photoBytes = bytes;
+    });
   }
 
-  Future<void> _takePhoto() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 1920,
-      maxHeight: 1080,
-      imageQuality: 85,
-    );
-    if (pickedFile != null) {
-      setState(() => _selectedPhoto = File(pickedFile.path));
-    }
-  }
+  void _clearPhoto() => setState(() {
+        _selectedPhoto = null;
+        _photoBytes = null;
+      });
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -71,6 +72,7 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
                 : _descriptionController.text.trim(),
             category: _selectedCategory,
             photoFile: _selectedPhoto,
+            photoBytes: _photoBytes,
           );
 
       if (mounted) {
@@ -96,6 +98,28 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
     }
   }
 
+  Widget _buildPhotoPreview() {
+    if (_photoBytes != null) {
+      // Works on both web and mobile
+      return Image.memory(
+        _photoBytes!,
+        height: 180,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      );
+    }
+    if (!kIsWeb && _selectedPhoto != null) {
+      // Mobile fallback (bytes should always be set, but just in case)
+      return Image.file(
+        File(_selectedPhoto!.path),
+        height: 180,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,7 +142,8 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
                         TextFormField(
                           controller: _titleController,
                           textInputAction: TextInputAction.next,
-                          validator: (v) => Validators.required(v, fieldName: 'Názov'),
+                          validator: (v) =>
+                              Validators.required(v, fieldName: 'Názov'),
                           decoration: const InputDecoration(
                             labelText: 'Názov problému *',
                             prefixIcon: Icon(Icons.title),
@@ -181,17 +206,11 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
                         if (_selectedPhoto != null) ...[
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              _selectedPhoto!,
-                              height: 180,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
+                            child: _buildPhotoPreview(),
                           ),
                           const SizedBox(height: 8),
                           TextButton.icon(
-                            onPressed: () =>
-                                setState(() => _selectedPhoto = null),
+                            onPressed: _clearPhoto,
                             icon: const Icon(Icons.delete_outline,
                                 color: AppColors.error),
                             label: const Text(
@@ -204,19 +223,24 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
                             children: [
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: _pickImage,
+                                  onPressed: () =>
+                                      _pickPhoto(ImageSource.gallery),
                                   icon: const Icon(Icons.photo_library_outlined),
                                   label: const Text('Galéria'),
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _takePhoto,
-                                  icon: const Icon(Icons.camera_alt_outlined),
-                                  label: const Text('Kamera'),
+                              // Camera not available on web
+                              if (!kIsWeb) ...[
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () =>
+                                        _pickPhoto(ImageSource.camera),
+                                    icon: const Icon(Icons.camera_alt_outlined),
+                                    label: const Text('Kamera'),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                       ],

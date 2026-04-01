@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/ticket_model.dart';
@@ -81,21 +82,40 @@ class TicketRepository {
     }
   }
 
-  Future<String> uploadTicketPhoto(File file) async {
+  /// Uploads a ticket photo and returns its public URL.
+  /// Accepts [XFile] + pre-loaded [bytes] so it works on both web and mobile.
+  Future<String> uploadTicketPhoto(XFile xfile, Uint8List bytes) async {
     try {
-      final fileExt = file.path.split('.').last;
-      final fileName = '${_uuid.v4()}.$fileExt';
+      final ext = xfile.name.contains('.')
+          ? xfile.name.split('.').last.toLowerCase()
+          : 'jpg';
+      final fileName = '${_uuid.v4()}.$ext';
       final filePath = 'tickets/$fileName';
+      final mimeType = xfile.mimeType ?? 'image/jpeg';
 
-      await _client.storage
-          .from(SupabaseConstants.storageBucket)
-          .upload(filePath, file);
+      if (kIsWeb) {
+        // On web, upload via bytes
+        await _client.storage
+            .from(SupabaseConstants.storageBucket)
+            .uploadBinary(
+              filePath,
+              bytes,
+              fileOptions: FileOptions(contentType: mimeType),
+            );
+      } else {
+        // On mobile, upload via File (more efficient for large files)
+        await _client.storage
+            .from(SupabaseConstants.storageBucket)
+            .upload(
+              filePath,
+              File(xfile.path),
+              fileOptions: FileOptions(contentType: mimeType),
+            );
+      }
 
-      final url = _client.storage
+      return _client.storage
           .from(SupabaseConstants.storageBucket)
           .getPublicUrl(filePath);
-
-      return url;
     } catch (e) {
       debugPrint('TicketRepository.uploadTicketPhoto error: $e');
       rethrow;

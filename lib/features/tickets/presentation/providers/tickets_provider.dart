@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../data/ticket_repository.dart';
 import '../../models/ticket_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -75,7 +76,8 @@ class CreateTicketNotifier extends AsyncNotifier<void> {
     required String title,
     String? description,
     required TicketCategory category,
-    File? photoFile,
+    XFile? photoFile,
+    Uint8List? photoBytes,
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -86,8 +88,8 @@ class CreateTicketNotifier extends AsyncNotifier<void> {
       final repo = ref.read(ticketRepositoryProvider);
       String? photoUrl;
 
-      if (photoFile != null) {
-        photoUrl = await repo.uploadTicketPhoto(photoFile);
+      if (photoFile != null && photoBytes != null) {
+        photoUrl = await repo.uploadTicketPhoto(photoFile, photoBytes);
       }
 
       await repo.createTicket(
