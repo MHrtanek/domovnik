@@ -247,12 +247,14 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                                     setState(() => _expiresAt = null),
                                 child: const Text('Zrušiť'),
                               ),
-                            ElevatedButton.icon(
-                              onPressed: _pickExpiryDate,
-                              icon: const Icon(Icons.calendar_today, size: 16),
-                              label: const Text('Vybrať dátum'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.secondary,
+                            Flexible(
+                              child: ElevatedButton.icon(
+                                onPressed: _pickExpiryDate,
+                                icon: const Icon(Icons.calendar_today, size: 16),
+                                label: const Text('Vybrať dátum'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.secondary,
+                                ),
                               ),
                             ),
                           ],
@@ -263,9 +265,12 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                ElevatedButton(
-                  onPressed: _submitting ? null : _submit,
-                  child: const Text('Vytvoriť hlasovanie'),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _submitting ? null : _submit,
+                    child: const Text('Vytvoriť hlasovanie'),
+                  ),
                 ),
               ],
             ),
