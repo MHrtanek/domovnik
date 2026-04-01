@@ -85,10 +85,10 @@ class ContactsScreen extends ConsumerWidget {
         content: Text('Naozaj chcete odstrániť "${contact.name}"?'),
         actions: [
           TextButton(
-              onPressed: () => ctx.pop(false),
+              onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text('Zrušiť')),
           ElevatedButton(
-            onPressed: () => ctx.pop(true),
+            onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Odstrániť'),
           ),

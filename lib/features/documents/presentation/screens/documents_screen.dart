@@ -109,10 +109,10 @@ class DocumentsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-              onPressed: () => ctx.pop(false),
+              onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text('Zrušiť')),
           ElevatedButton(
-              onPressed: () => ctx.pop(true),
+              onPressed: () => Navigator.of(ctx).pop(true),
               child: const Text('Nahrať')),
         ],
       ),
@@ -155,10 +155,10 @@ class DocumentsScreen extends ConsumerWidget {
         content: Text('Naozaj chcete odstrániť "${doc.name}"?'),
         actions: [
           TextButton(
-              onPressed: () => ctx.pop(false),
+              onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text('Zrušiť')),
           ElevatedButton(
-            onPressed: () => ctx.pop(true),
+            onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Odstrániť'),
           ),
