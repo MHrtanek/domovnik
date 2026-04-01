@@ -130,45 +130,24 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class _DashboardRedirect extends ConsumerStatefulWidget {
+class _DashboardRedirect extends ConsumerWidget {
   const _DashboardRedirect();
 
   @override
-  ConsumerState<_DashboardRedirect> createState() => _DashboardRedirectState();
-}
-
-class _DashboardRedirectState extends ConsumerState<_DashboardRedirect> {
-  int _retries = 0;
-  static const _maxRetries = 5;
-  static const _retryDelay = Duration(milliseconds: 800);
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(profileProvider);
 
     return profileAsync.when(
       data: (profile) {
         if (profile == null) {
-          // Trigger may still be running (especially after email confirmation).
-          // Retry a few times before giving up and going to login.
-          if (_retries < _maxRetries) {
-            Future.delayed(_retryDelay, () {
-              if (mounted) {
-                setState(() => _retries++);
-                ref.invalidate(profileProvider);
-              }
-            });
-            return const Scaffold(body: LoadingWidget());
-          }
-          // Gave up – no profile found
+          // bootstrapProfile() returned null — give up and go to login.
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) context.go('/login');
+            if (context.mounted) context.go('/login');
           });
           return const Scaffold(body: LoadingWidget());
         }
-
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
+          if (context.mounted) {
             if (profile.isManager) {
               context.go('/manager/dashboard');
             } else {
@@ -181,7 +160,7 @@ class _DashboardRedirectState extends ConsumerState<_DashboardRedirect> {
       loading: () => const Scaffold(body: LoadingWidget()),
       error: (e, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) context.go('/login');
+          if (context.mounted) context.go('/login');
         });
         return const Scaffold(body: LoadingWidget());
       },

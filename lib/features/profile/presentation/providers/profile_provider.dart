@@ -16,7 +16,20 @@ class ProfileNotifier extends AsyncNotifier<ProfileModel?> {
   Future<ProfileModel?> build() async {
     final user = ref.watch(currentUserProvider);
     if (user == null) return null;
-    return ref.read(profileRepositoryProvider).getProfile(user.id);
+
+    final repo = ref.read(profileRepositoryProvider);
+    final existing = await repo.getProfile(user.id);
+
+    // Self-healing: if authenticated but no profile row, it means the
+    // on_auth_user_created trigger didn't run (e.g. email confirmation
+    // delayed the session, or the trigger failed silently).
+    // Call bootstrapProfile() which reads JWT metadata and calls the
+    // handle_user_signup RPC (SECURITY DEFINER) to create it now.
+    if (existing == null) {
+      return repo.bootstrapProfile(user);
+    }
+
+    return existing;
   }
 
   Future<void> updateProfile({
