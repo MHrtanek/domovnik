@@ -28,14 +28,15 @@ class AuthRepository {
     }
   }
 
-  /// Signs up a user.
+  /// Signs up a user and ensures their profile + building exist.
   ///
-  /// Registration metadata (role, full_name, building info) is embedded
-  /// directly into [signUp]'s `data` map so it lands in
-  /// `auth.users.raw_user_meta_data`. A database trigger
-  /// (`on_auth_user_created`) picks those values up and atomically
-  /// creates the profile and building — even before the user confirms
-  /// their e-mail, which means no session is required at sign-up time.
+  /// Strategy (belt-and-suspenders):
+  ///   1. Embed all metadata in `signUp(data:{})` → stored in
+  ///      `raw_user_meta_data` → fires `on_auth_user_created` trigger
+  ///      which creates the profile atomically, no session required.
+  ///   2. If `signUp()` returns a session immediately (email confirmation
+  ///      is disabled), also call `handle_user_signup()` RPC as a fallback
+  ///      that will upsert the profile if the trigger somehow didn't run.
   Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -45,38 +46,59 @@ class AuthRepository {
     String? buildingName,
     String? buildingAddress,
   }) async {
+    // ── Step 1: create the auth user with metadata ─────────────────────────
+    final AuthResponse response;
     try {
-      final metadata = <String, dynamic>{
-        'full_name': fullName,
-        'role': role,
-        if (role == 'resident' && buildingId != null)
-          'building_id': buildingId,
-        if (role == 'manager' && buildingName != null)
-          'building_name': buildingName,
-        if (role == 'manager' && buildingAddress != null)
-          'building_address': buildingAddress,
-      };
-
-      debugPrint('AuthRepository.signUp metadata: $metadata');
-
-      final response = await _client.auth.signUp(
+      response = await _client.auth.signUp(
         email: email,
         password: password,
-        data: metadata,          // → raw_user_meta_data → trigger fires
+        data: {
+          'full_name': fullName,
+          'role': role,
+          if (role == 'resident' && buildingId != null)
+            'building_id': buildingId,
+          if (role == 'manager' && buildingName != null)
+            'building_name': buildingName,
+          if (role == 'manager' && buildingAddress != null)
+            'building_address': buildingAddress,
+        },
       );
-
-      if (response.user == null) {
-        throw Exception('Registrácia zlyhala – žiadny používateľ');
-      }
-
-      return response;
     } on AuthException catch (e) {
       debugPrint('AuthRepository.signUp auth error: ${e.message}');
       rethrow;
-    } catch (e) {
-      debugPrint('AuthRepository.signUp unexpected error: $e');
-      rethrow;
     }
+
+    if (response.user == null) {
+      throw Exception('Registrácia zlyhala – žiadny používateľ');
+    }
+
+    debugPrint(
+      'AuthRepository.signUp: user=${response.user!.id} '
+      'session=${response.session != null ? "YES" : "NO (email confirm required)"}',
+    );
+
+    // ── Step 2: if we got a session, call the RPC as a belt-and-suspenders  ─
+    // The trigger already ran synchronously on INSERT, so this is usually a
+    // no-op. But if the trigger failed silently (Supabase catches trigger
+    // exceptions in some versions), the RPC will create the profile itself.
+    if (response.session != null) {
+      try {
+        final result = await _client.rpc('handle_user_signup', params: {
+          'p_email': email,
+          'p_full_name': fullName,
+          'p_role': role,
+          'p_building_id': buildingId,
+          'p_building_name': buildingName,
+          'p_building_address': buildingAddress,
+        });
+        debugPrint('AuthRepository.signUp RPC result: $result');
+      } catch (e) {
+        // Log but don't fail – the trigger may already have done the work.
+        debugPrint('AuthRepository.signUp RPC fallback error (non-fatal): $e');
+      }
+    }
+
+    return response;
   }
 
   Future<void> signOut() async {
