@@ -86,39 +86,68 @@ class TicketRepository {
   /// Accepts [XFile] + pre-loaded [bytes] so it works on both web and mobile.
   Future<String> uploadTicketPhoto(XFile xfile, Uint8List bytes) async {
     try {
-      final ext = xfile.name.contains('.')
-          ? xfile.name.split('.').last.toLowerCase()
-          : 'jpg';
+      // Derive extension from mime type first (most reliable on web where
+      // xfile.name may be a blob URL like "blob:http://localhost/...").
+      final mimeType = xfile.mimeType ?? _mimeFromBytes(bytes);
+      final ext = _extFromMime(mimeType);
       final fileName = '${_uuid.v4()}.$ext';
+      const bucket = SupabaseConstants.storageBucket; // 'ticket-photos'
       final filePath = 'tickets/$fileName';
-      final mimeType = xfile.mimeType ?? 'image/jpeg';
 
-      if (kIsWeb) {
-        // On web, upload via bytes
-        await _client.storage
-            .from(SupabaseConstants.storageBucket)
-            .uploadBinary(
-              filePath,
-              bytes,
-              fileOptions: FileOptions(contentType: mimeType),
-            );
-      } else {
-        // On mobile, upload via File (more efficient for large files)
-        await _client.storage
-            .from(SupabaseConstants.storageBucket)
-            .upload(
-              filePath,
-              File(xfile.path),
-              fileOptions: FileOptions(contentType: mimeType),
-            );
-      }
+      debugPrint('uploadTicketPhoto: bucket=$bucket path=$filePath mime=$mimeType');
 
-      return _client.storage
-          .from(SupabaseConstants.storageBucket)
-          .getPublicUrl(filePath);
+      // Always upload via bytes — works identically on web and mobile,
+      // avoids dart:io File() on web.
+      await _client.storage
+          .from(bucket)
+          .uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: FileOptions(contentType: mimeType),
+          );
+
+      // Build the public URL explicitly to avoid SDK version quirks.
+      // Format: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
+      final supabaseUrl = _client.supabaseUrl.replaceAll(RegExp(r'/$'), '');
+      final url = '$supabaseUrl/storage/v1/object/public/$bucket/$filePath';
+
+      debugPrint('uploadTicketPhoto: url=$url');
+      return url;
     } catch (e) {
       debugPrint('TicketRepository.uploadTicketPhoto error: $e');
       rethrow;
+    }
+  }
+
+  /// Derive MIME type from the first bytes (magic bytes).
+  String _mimeFromBytes(Uint8List bytes) {
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xFF &&
+        bytes[1] == 0xD8 &&
+        bytes[2] == 0xFF) return 'image/jpeg';
+    if (bytes.length >= 8 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) return 'image/png';
+    if (bytes.length >= 6 &&
+        bytes[0] == 0x47 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46) return 'image/gif';
+    if (bytes.length >= 4 &&
+        bytes[0] == 0x52 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x46) return 'image/webp';
+    return 'image/jpeg'; // safe default
+  }
+
+  String _extFromMime(String mime) {
+    switch (mime) {
+      case 'image/png':  return 'png';
+      case 'image/gif':  return 'gif';
+      case 'image/webp': return 'webp';
+      default:           return 'jpg';
     }
   }
 
