@@ -8,32 +8,12 @@
 --      (called from the app after getting a session, as belt-and-suspenders)
 -- ============================================================
 
--- ============================================================
--- 1. DISABLE EMAIL CONFIRMATION
---    signUp() will now return a session immediately.
--- ============================================================
-update auth.config
-   set mailer_autoconfirm = true
- where id = 1;
-
--- Fallback for newer Supabase versions that use a different table
--- (safe to run; does nothing if the column doesn't exist)
-do $$
-begin
-  if exists (
-    select 1 from information_schema.columns
-     where table_schema = 'auth'
-       and table_name   = 'config'
-       and column_name  = 'enable_confirmations'
-  ) then
-    update auth.config set enable_confirmations = false where id = 1;
-  end if;
-exception when others then null;
-end
-$$;
+-- NOTE: Email confirmation is disabled via the Supabase Dashboard UI:
+-- Authentication → Providers → Email → turn off "Confirm email"
+-- The auth.config table does not exist on Supabase cloud.
 
 -- ============================================================
--- 2. REBUILD TRIGGER — no silent error swallowing
+-- 1. REBUILD TRIGGER — no silent error swallowing
 -- ============================================================
 create or replace function handle_new_user()
 returns trigger
