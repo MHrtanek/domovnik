@@ -20,10 +20,11 @@ import '../features/polls/presentation/screens/create_poll_screen.dart';
 import '../features/polls/presentation/screens/poll_detail_screen.dart';
 import '../features/contacts/presentation/screens/contacts_screen.dart';
 import '../features/documents/presentation/screens/documents_screen.dart';
+import '../features/forum/presentation/screens/forum_screen.dart';
+import '../features/reservations/presentation/screens/reservations_screen.dart';
 import '../shared/widgets/loading_widget.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // Watch auth state so the router rebuilds on sign-in / sign-out
   ref.watch(authStateProvider);
 
   return GoRouter(
@@ -39,7 +40,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // Auth routes
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
@@ -48,14 +48,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
-
-      // Dashboard redirect (resolves role)
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const _DashboardRedirect(),
       ),
 
-      // Resident shell with bottom nav
+      // Resident shell
       ShellRoute(
         builder: (context, state, child) => ResidentShell(child: child),
         routes: [
@@ -72,6 +70,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const PollsScreen(),
           ),
           GoRoute(
+            path: '/resident/forum',
+            builder: (context, state) => const ForumScreen(),
+          ),
+          GoRoute(
+            path: '/resident/reservations',
+            builder: (context, state) => const ReservationsScreen(),
+          ),
+          GoRoute(
             path: '/resident/contacts',
             builder: (context, state) => const ContactsScreen(),
           ),
@@ -86,7 +92,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Manager shell with bottom nav
+      // Manager shell
       ShellRoute(
         builder: (context, state, child) => ManagerShell(child: child),
         routes: [
@@ -107,6 +113,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const PollsScreen(),
           ),
           GoRoute(
+            path: '/manager/forum',
+            builder: (context, state) => const ForumScreen(),
+          ),
+          GoRoute(
+            path: '/manager/reservations',
+            builder: (context, state) => const ReservationsScreen(),
+          ),
+          GoRoute(
             path: '/manager/contacts',
             builder: (context, state) => const ContactsScreen(),
           ),
@@ -121,7 +135,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Full-screen routes (no bottom nav)
+      // Full-screen routes
       GoRoute(
         path: '/tickets/create',
         builder: (context, state) => const CreateTicketScreen(),
@@ -158,7 +172,6 @@ class _DashboardRedirect extends ConsumerWidget {
     return profileAsync.when(
       data: (profile) {
         if (profile == null) {
-          // bootstrapProfile() returned null — give up and go to login.
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) context.go('/login');
           });
@@ -196,6 +209,8 @@ class ResidentShell extends StatelessWidget {
     '/resident/announcements',
     '/resident/tickets',
     '/resident/polls',
+    '/resident/forum',
+    '/resident/reservations',
     '/resident/contacts',
     '/resident/documents',
     '/resident/profile',
@@ -212,6 +227,8 @@ class ResidentShell extends StatelessWidget {
         currentIndex: currentIndex < 0 ? 0 : currentIndex,
         onTap: (i) => context.go(_tabs[i]),
         type: BottomNavigationBarType.fixed,
+        selectedFontSize: 10,
+        unselectedFontSize: 10,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.campaign_outlined),
@@ -227,6 +244,16 @@ class ResidentShell extends StatelessWidget {
             icon: Icon(Icons.how_to_vote_outlined),
             activeIcon: Icon(Icons.how_to_vote),
             label: 'Hlasovanie',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.forum_outlined),
+            activeIcon: Icon(Icons.forum),
+            label: 'Fórum',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.event_available_outlined),
+            activeIcon: Icon(Icons.event_available),
+            label: 'Rezervácie',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.contacts_outlined),
@@ -260,6 +287,8 @@ class ManagerShell extends StatelessWidget {
     '/manager/announcements',
     '/manager/tickets',
     '/manager/polls',
+    '/manager/forum',
+    '/manager/reservations',
     '/manager/contacts',
     '/manager/documents',
     '/manager/profile',
@@ -276,6 +305,8 @@ class ManagerShell extends StatelessWidget {
         currentIndex: currentIndex < 0 ? 0 : currentIndex,
         onTap: (i) => context.go(_tabs[i]),
         type: BottomNavigationBarType.fixed,
+        selectedFontSize: 10,
+        unselectedFontSize: 10,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined),
@@ -296,6 +327,16 @@ class ManagerShell extends StatelessWidget {
             icon: Icon(Icons.how_to_vote_outlined),
             activeIcon: Icon(Icons.how_to_vote),
             label: 'Hlasovanie',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.forum_outlined),
+            activeIcon: Icon(Icons.forum),
+            label: 'Fórum',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.event_available_outlined),
+            activeIcon: Icon(Icons.event_available),
+            label: 'Rezervácie',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.contacts_outlined),
