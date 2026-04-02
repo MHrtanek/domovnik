@@ -40,6 +40,7 @@ class TicketModel {
   final TicketStatus status;
   final String? photoUrl;
   final String createdBy;
+  final String? createdByName;
   final String buildingId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -52,12 +53,20 @@ class TicketModel {
     required this.status,
     this.photoUrl,
     required this.createdBy,
+    this.createdByName,
     required this.buildingId,
     required this.createdAt,
     required this.updatedAt,
   });
 
   factory TicketModel.fromJson(Map<String, dynamic> json) {
+    // Support joined profiles data: profiles: { full_name: '...' }
+    String? createdByName;
+    final profiles = json['profiles'];
+    if (profiles is Map<String, dynamic>) {
+      createdByName = profiles['full_name'] as String?;
+    }
+
     return TicketModel(
       id: json['id'] as String,
       title: json['title'] as String,
@@ -66,6 +75,7 @@ class TicketModel {
       status: TicketStatus.fromString(json['status'] as String),
       photoUrl: json['photo_url'] as String?,
       createdBy: json['created_by'] as String,
+      createdByName: createdByName,
       buildingId: json['building_id'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -95,6 +105,7 @@ class TicketModel {
     TicketStatus? status,
     String? photoUrl,
     String? createdBy,
+    String? createdByName,
     String? buildingId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -107,6 +118,7 @@ class TicketModel {
       status: status ?? this.status,
       photoUrl: photoUrl ?? this.photoUrl,
       createdBy: createdBy ?? this.createdBy,
+      createdByName: createdByName ?? this.createdByName,
       buildingId: buildingId ?? this.buildingId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

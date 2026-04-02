@@ -216,6 +216,28 @@ class _TicketCard extends StatelessWidget {
                   ),
                 ],
               ),
+              if (ticket.createdByName != null &&
+                  ticket.createdByName!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.person_outline,
+                      size: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      ticket.createdByName!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               if (ticket.description != null &&
                   ticket.description!.isNotEmpty) ...[
                 const SizedBox(height: 8),

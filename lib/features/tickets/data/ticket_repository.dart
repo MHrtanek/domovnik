@@ -18,9 +18,24 @@ class TicketRepository {
         .stream(primaryKey: ['id'])
         .eq('building_id', buildingId)
         .order('created_at', ascending: false)
-        .map((rows) => rows
-            .map((r) => TicketModel.fromJson(r as Map<String, dynamic>))
-            .toList());
+        .map((rows) async {
+          final List<TicketModel> tickets = [];
+          for (final r in rows) {
+            final map = r as Map<String, dynamic>;
+            // Fetch author name separately
+            try {
+              final profile = await _client
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', map['created_by'] as String)
+                  .maybeSingle();
+              map['profiles'] = profile;
+            } catch (_) {}
+            tickets.add(TicketModel.fromJson(map));
+          }
+          return tickets;
+        })
+        .asyncMap((future) => future);
   }
 
   Stream<List<TicketModel>> getMyTickets(String userId) {
@@ -29,9 +44,23 @@ class TicketRepository {
         .stream(primaryKey: ['id'])
         .eq('created_by', userId)
         .order('created_at', ascending: false)
-        .map((rows) => rows
-            .map((r) => TicketModel.fromJson(r as Map<String, dynamic>))
-            .toList());
+        .map((rows) async {
+          final List<TicketModel> tickets = [];
+          for (final r in rows) {
+            final map = r as Map<String, dynamic>;
+            try {
+              final profile = await _client
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', map['created_by'] as String)
+                  .maybeSingle();
+              map['profiles'] = profile;
+            } catch (_) {}
+            tickets.add(TicketModel.fromJson(map));
+          }
+          return tickets;
+        })
+        .asyncMap((future) => future);
   }
 
   Future<TicketModel> createTicket({
@@ -82,22 +111,14 @@ class TicketRepository {
     }
   }
 
-  /// Uploads a ticket photo and returns its public URL.
-  /// Accepts [XFile] + pre-loaded [bytes] so it works on both web and mobile.
   Future<String> uploadTicketPhoto(XFile xfile, Uint8List bytes) async {
     try {
-      // Derive extension from mime type first (most reliable on web where
-      // xfile.name may be a blob URL like "blob:http://localhost/...").
       final mimeType = xfile.mimeType ?? _mimeFromBytes(bytes);
       final ext = _extFromMime(mimeType);
       final fileName = '${_uuid.v4()}.$ext';
-      const bucket = SupabaseConstants.storageBucket; // 'ticket-photos'
+      const bucket = SupabaseConstants.storageBucket;
       final filePath = 'tickets/$fileName';
 
-      debugPrint('uploadTicketPhoto: bucket=$bucket path=$filePath mime=$mimeType');
-
-      // Always upload via bytes — works identically on web and mobile,
-      // avoids dart:io File() on web.
       await _client.storage
           .from(bucket)
           .uploadBinary(
@@ -106,12 +127,8 @@ class TicketRepository {
             fileOptions: FileOptions(contentType: mimeType),
           );
 
-      // Build the public URL explicitly to avoid SDK version quirks.
-      // Format: {supabaseUrl}/storage/v1/object/public/{bucket}/{path}
       final supabaseUrl = (dotenv.env['SUPABASE_URL'] ?? '').replaceAll(RegExp(r'/$'), '');
       final url = '$supabaseUrl/storage/v1/object/public/$bucket/$filePath';
-
-      debugPrint('uploadTicketPhoto: url=$url');
       return url;
     } catch (e) {
       debugPrint('TicketRepository.uploadTicketPhoto error: $e');
@@ -119,27 +136,12 @@ class TicketRepository {
     }
   }
 
-  /// Derive MIME type from the first bytes (magic bytes).
   String _mimeFromBytes(Uint8List bytes) {
-    if (bytes.length >= 3 &&
-        bytes[0] == 0xFF &&
-        bytes[1] == 0xD8 &&
-        bytes[2] == 0xFF) return 'image/jpeg';
-    if (bytes.length >= 8 &&
-        bytes[0] == 0x89 &&
-        bytes[1] == 0x50 &&
-        bytes[2] == 0x4E &&
-        bytes[3] == 0x47) return 'image/png';
-    if (bytes.length >= 6 &&
-        bytes[0] == 0x47 &&
-        bytes[1] == 0x49 &&
-        bytes[2] == 0x46) return 'image/gif';
-    if (bytes.length >= 4 &&
-        bytes[0] == 0x52 &&
-        bytes[1] == 0x49 &&
-        bytes[2] == 0x46 &&
-        bytes[3] == 0x46) return 'image/webp';
-    return 'image/jpeg'; // safe default
+    if (bytes.length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF) return 'image/jpeg';
+    if (bytes.length >= 8 && bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) return 'image/png';
+    if (bytes.length >= 6 && bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46) return 'image/gif';
+    if (bytes.length >= 4 && bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46) return 'image/webp';
+    return 'image/jpeg';
   }
 
   String _extFromMime(String mime) {
@@ -155,7 +157,7 @@ class TicketRepository {
     try {
       final response = await _client
           .from(SupabaseConstants.tablTickets)
-          .select()
+          .select('*, profiles(full_name)')
           .eq('id', ticketId)
           .maybeSingle();
 
