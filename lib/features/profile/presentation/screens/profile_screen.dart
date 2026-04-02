@@ -1,6 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
@@ -24,6 +28,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _flatNumberController = TextEditingController();
   bool _editing = false;
   bool _saving = false;
+
+  // Invite kódy
+  List<Map<String, dynamic>> _inviteCodes = [];
+  bool _loadingCodes = false;
 
   @override
   void dispose() {
@@ -88,6 +96,72 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await ref.read(authNotifierProvider.notifier).signOut();
       if (mounted) context.go('/login');
     }
+  }
+
+  String _generateCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rnd = Random.secure();
+    return List.generate(6, (_) => chars[rnd.nextInt(chars.length)]).join();
+  }
+
+  Future<void> _loadInviteCodes(String buildingId) async {
+    setState(() => _loadingCodes = true);
+    try {
+      final rows = await Supabase.instance.client
+          .from('invite_codes')
+          .select('id, code, used, expires_at, created_at')
+          .eq('building_id', buildingId)
+          .order('created_at', ascending: false)
+          .limit(10);
+      setState(() => _inviteCodes = List<Map<String, dynamic>>.from(rows));
+    } catch (_) {} finally {
+      if (mounted) setState(() => _loadingCodes = false);
+    }
+  }
+
+  Future<void> _createInviteCode(String buildingId) async {
+    final profile = ref.read(profileProvider).value;
+    if (profile == null) return;
+
+    final code = _generateCode();
+    try {
+      await Supabase.instance.client.from('invite_codes').insert({
+        'code': code,
+        'building_id': buildingId,
+        'created_by': profile.id,
+        'expires_at':
+            DateTime.now().add(const Duration(days: 7)).toIso8601String(),
+      });
+      await _loadInviteCodes(buildingId);
+      if (mounted) {
+        await Clipboard.setData(ClipboardData(text: code));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kód $code vytvorený a skopírovaný!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nepodarilo sa vytvoriť kód'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteInviteCode(String codeId, String buildingId) async {
+    try {
+      await Supabase.instance.client
+          .from('invite_codes')
+          .delete()
+          .eq('id', codeId);
+      await _loadInviteCodes(buildingId);
+    } catch (_) {}
   }
 
   @override
@@ -195,9 +269,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             const Text(
                               'Upraviť profil',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
+                                  fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 16),
                             TextFormField(
@@ -214,7 +286,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 controller: _flatNumberController,
                                 decoration: const InputDecoration(
                                   labelText: 'Číslo bytu (nepovinné)',
-                                  prefixIcon: Icon(Icons.door_front_door_outlined),
+                                  prefixIcon:
+                                      Icon(Icons.door_front_door_outlined),
                                 ),
                               ),
                               const SizedBox(height: 12),
@@ -265,6 +338,156 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       value: profile.flatNumber!,
                     ),
                   ],
+                ],
+
+                // ── Invite kódy (len správca) ──────────────────────────
+                if (profile.isManager) ...[
+                  const SizedBox(height: 24),
+                  buildingAsync.when(
+                    data: (building) {
+                      if (building == null) return const SizedBox.shrink();
+
+                      // Načítaj kódy pri prvom zobrazení
+                      if (_inviteCodes.isEmpty && !_loadingCodes) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _loadInviteCodes(building.id);
+                        });
+                      }
+
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.vpn_key_outlined,
+                                      color: AppColors.primary),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      'Invite kódy pre obyvateľov',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _createInviteCode(building.id),
+                                    icon: const Icon(Icons.add, size: 18),
+                                    label: const Text('Nový kód'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Kódy platia 7 dní. Zdieľajte ich s obyvateľmi pri registrácii.',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary),
+                              ),
+                              const SizedBox(height: 12),
+                              if (_loadingCodes)
+                                const Center(child: CircularProgressIndicator())
+                              else if (_inviteCodes.isEmpty)
+                                const Text(
+                                  'Žiadne kódy. Vytvorte nový kód pre obyvateľa.',
+                                  style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 13),
+                                )
+                              else
+                                ...(_inviteCodes.map((code) {
+                                  final used = code['used'] == true;
+                                  final expiresAt = code['expires_at'] != null
+                                      ? DateTime.parse(code['expires_at'])
+                                      : null;
+                                  final expired = expiresAt != null &&
+                                      expiresAt.isBefore(DateTime.now());
+                                  return ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: Icon(
+                                      used
+                                          ? Icons.check_circle
+                                          : expired
+                                              ? Icons.cancel
+                                              : Icons.vpn_key,
+                                      color: used
+                                          ? AppColors.success
+                                          : expired
+                                              ? AppColors.error
+                                              : AppColors.primary,
+                                      size: 20,
+                                    ),
+                                    title: Text(
+                                      code['code'] as String,
+                                      style: TextStyle(
+                                        fontFamily: 'monospace',
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: used || expired
+                                            ? AppColors.textSecondary
+                                            : AppColors.textPrimary,
+                                        decoration: used
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      used
+                                          ? 'Použitý'
+                                          : expired
+                                              ? 'Vypršaný'
+                                              : expiresAt != null
+                                                  ? 'Platný do ${expiresAt.day}.${expiresAt.month}.${expiresAt.year}'
+                                                  : '',
+                                      style: const TextStyle(fontSize: 11),
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (!used && !expired)
+                                          IconButton(
+                                            icon: const Icon(Icons.copy,
+                                                size: 18),
+                                            onPressed: () async {
+                                              await Clipboard.setData(
+                                                  ClipboardData(
+                                                      text: code['code']
+                                                          as String));
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  const SnackBar(
+                                                      content:
+                                                          Text('Kód skopírovaný')),
+                                                );
+                                              }
+                                            },
+                                          ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline,
+                                              size: 18,
+                                              color: AppColors.error),
+                                          onPressed: () => _deleteInviteCode(
+                                              code['id'] as String,
+                                              building.id),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                })),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
                 ],
 
                 const SizedBox(height: 32),
