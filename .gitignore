@@ -1,1 +1,5 @@
 build/
+
+# Flutter build
+build/
+.dart_tool/chrome-device/
