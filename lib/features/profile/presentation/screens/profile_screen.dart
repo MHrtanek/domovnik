@@ -29,9 +29,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _editing = false;
   bool _saving = false;
 
-  // Invite kódy
   List<Map<String, dynamic>> _inviteCodes = [];
   bool _loadingCodes = false;
+  bool _codesLoaded = false;
 
   @override
   void dispose() {
@@ -49,7 +49,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-
     try {
       await ref.read(profileProvider.notifier).updateProfile(
             fullName: _fullNameController.text.trim(),
@@ -61,10 +60,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Chyba: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('Chyba: ${e.toString()}'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -79,10 +75,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         title: const Text('Odhlásiť sa'),
         content: const Text('Naozaj sa chcete odhlásiť?'),
         actions: [
-          TextButton(
-            onPressed: () => ctx.pop(false),
-            child: const Text('Zrušiť'),
-          ),
+          TextButton(onPressed: () => ctx.pop(false), child: const Text('Zrušiť')),
           ElevatedButton(
             onPressed: () => ctx.pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -91,7 +84,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
     );
-
     if (confirmed == true) {
       await ref.read(authNotifierProvider.notifier).signOut();
       if (mounted) context.go('/login');
@@ -105,6 +97,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _loadInviteCodes(String buildingId) async {
+    if (_loadingCodes) return;
     setState(() => _loadingCodes = true);
     try {
       final rows = await Supabase.instance.client
@@ -113,8 +106,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           .eq('building_id', buildingId)
           .order('created_at', ascending: false)
           .limit(10);
-      setState(() => _inviteCodes = List<Map<String, dynamic>>.from(rows));
-    } catch (_) {} finally {
+      if (mounted) {
+        setState(() {
+          _inviteCodes = List<Map<String, dynamic>>.from(rows);
+          _codesLoaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _codesLoaded = true);
+    } finally {
       if (mounted) setState(() => _loadingCodes = false);
     }
   }
@@ -122,33 +122,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _createInviteCode(String buildingId) async {
     final profile = ref.read(profileProvider).value;
     if (profile == null) return;
-
     final code = _generateCode();
     try {
       await Supabase.instance.client.from('invite_codes').insert({
         'code': code,
         'building_id': buildingId,
         'created_by': profile.id,
-        'expires_at':
-            DateTime.now().add(const Duration(days: 7)).toIso8601String(),
+        'expires_at': DateTime.now().add(const Duration(days: 7)).toIso8601String(),
       });
+      setState(() => _codesLoaded = false); // force reload
       await _loadInviteCodes(buildingId);
       if (mounted) {
         await Clipboard.setData(ClipboardData(text: code));
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Kód $code vytvorený a skopírovaný!'),
-            backgroundColor: AppColors.success,
-          ),
+          SnackBar(content: Text('Kód $code vytvorený a skopírovaný!'), backgroundColor: AppColors.success),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nepodarilo sa vytvoriť kód'),
-            backgroundColor: AppColors.error,
-          ),
+          const SnackBar(content: Text('Nepodarilo sa vytvoriť kód'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -156,10 +149,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _deleteInviteCode(String codeId, String buildingId) async {
     try {
-      await Supabase.instance.client
-          .from('invite_codes')
-          .delete()
-          .eq('id', codeId);
+      await Supabase.instance.client.from('invite_codes').delete().eq('id', codeId);
+      setState(() => _codesLoaded = false);
       await _loadInviteCodes(buildingId);
     } catch (_) {}
   }
@@ -199,64 +190,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Avatar
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: AppColors.primary,
                   child: Text(
-                    (profile.fullName?.isNotEmpty == true
-                            ? profile.fullName![0]
-                            : profile.email[0])
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 36,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    (profile.fullName?.isNotEmpty == true ? profile.fullName![0] : profile.email[0]).toUpperCase(),
+                    style: const TextStyle(fontSize: 36, color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  profile.fullName ?? 'Bez mena',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
+                Text(profile.fullName ?? 'Bez mena', style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 4),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: profile.isManager
-                        ? AppColors.secondary.withOpacity(0.1)
-                        : AppColors.primary.withOpacity(0.1),
+                    color: profile.isManager ? AppColors.secondary.withOpacity(0.1) : AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     profile.isManager ? 'Správca' : 'Obyvateľ',
                     style: TextStyle(
-                      color: profile.isManager
-                          ? AppColors.secondary
-                          : AppColors.primary,
+                      color: profile.isManager ? AppColors.secondary : AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Building info
                 buildingAsync.when(
                   data: (building) => building != null
-                      ? _InfoCard(
-                          icon: Icons.apartment,
-                          title: 'Budova',
-                          value: '${building.name}\n${building.address}',
-                        )
+                      ? _InfoCard(icon: Icons.apartment, title: 'Budova', value: '${building.name}\n${building.address}')
                       : const SizedBox.shrink(),
                   loading: () => const LoadingWidget(),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
                 const SizedBox(height: 12),
 
-                // Profile form/display
                 if (_editing)
                   Card(
                     child: Padding(
@@ -266,54 +235,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text(
-                              'Upraviť profil',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
+                            const Text('Upraviť profil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                             const SizedBox(height: 16),
                             TextFormField(
                               controller: _fullNameController,
                               validator: Validators.fullName,
-                              decoration: const InputDecoration(
-                                labelText: 'Meno a priezvisko',
-                                prefixIcon: Icon(Icons.badge_outlined),
-                              ),
+                              decoration: const InputDecoration(labelText: 'Meno a priezvisko', prefixIcon: Icon(Icons.badge_outlined)),
                             ),
                             const SizedBox(height: 12),
                             if (profile.isResident) ...[
                               TextFormField(
                                 controller: _flatNumberController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Číslo bytu (nepovinné)',
-                                  prefixIcon:
-                                      Icon(Icons.door_front_door_outlined),
-                                ),
+                                decoration: const InputDecoration(labelText: 'Číslo bytu (nepovinné)', prefixIcon: Icon(Icons.door_front_door_outlined)),
                               ),
                               const SizedBox(height: 12),
                             ],
                             Row(
                               children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () =>
-                                        setState(() => _editing = false),
-                                    child: const Text('Zrušiť'),
-                                  ),
-                                ),
+                                Expanded(child: OutlinedButton(onPressed: () => setState(() => _editing = false), child: const Text('Zrušiť'))),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: ElevatedButton(
                                     onPressed: _saving ? null : _saveProfile,
                                     child: _saving
-                                        ? const SizedBox(
-                                            height: 20,
-                                            width: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white,
-                                            ),
-                                          )
+                                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                         : const Text('Uložiť'),
                                   ),
                                 ),
@@ -325,35 +270,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   )
                 else ...[
-                  _InfoCard(
-                    icon: Icons.email_outlined,
-                    title: 'E-mail',
-                    value: profile.email,
-                  ),
+                  _InfoCard(icon: Icons.email_outlined, title: 'E-mail', value: profile.email),
                   if (profile.flatNumber != null) ...[
                     const SizedBox(height: 12),
-                    _InfoCard(
-                      icon: Icons.door_front_door_outlined,
-                      title: 'Číslo bytu',
-                      value: profile.flatNumber!,
-                    ),
+                    _InfoCard(icon: Icons.door_front_door_outlined, title: 'Číslo bytu', value: profile.flatNumber!),
                   ],
                 ],
 
-                // ── Invite kódy (len správca) ──────────────────────────
+                // Invite kódy - len pre správcu
                 if (profile.isManager) ...[
                   const SizedBox(height: 24),
                   buildingAsync.when(
                     data: (building) {
                       if (building == null) return const SizedBox.shrink();
-
-                      // Načítaj kódy pri prvom zobrazení
-                      if (_inviteCodes.isEmpty && !_loadingCodes) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _loadInviteCodes(building.id);
-                        });
+                      if (!_codesLoaded && !_loadingCodes) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) => _loadInviteCodes(building.id));
                       }
-
                       return Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -362,64 +294,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.vpn_key_outlined,
-                                      color: AppColors.primary),
+                                  const Icon(Icons.vpn_key_outlined, color: AppColors.primary),
                                   const SizedBox(width: 8),
                                   const Expanded(
-                                    child: Text(
-                                      'Invite kódy pre obyvateľov',
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600),
-                                    ),
+                                    child: Text('Invite kódy pre obyvateľov', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                                   ),
                                   TextButton.icon(
-                                    onPressed: () =>
-                                        _createInviteCode(building.id),
+                                    onPressed: () => _createInviteCode(building.id),
                                     icon: const Icon(Icons.add, size: 18),
                                     label: const Text('Nový kód'),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
                               const Text(
                                 'Kódy platia 7 dní. Zdieľajte ich s obyvateľmi pri registrácii.',
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary),
+                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                               ),
                               const SizedBox(height: 12),
                               if (_loadingCodes)
                                 const Center(child: CircularProgressIndicator())
                               else if (_inviteCodes.isEmpty)
-                                const Text(
-                                  'Žiadne kódy. Vytvorte nový kód pre obyvateľa.',
-                                  style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 13),
-                                )
+                                const Text('Žiadne kódy. Kliknite na "+ Nový kód".', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))
                               else
                                 ...(_inviteCodes.map((code) {
                                   final used = code['used'] == true;
-                                  final expiresAt = code['expires_at'] != null
-                                      ? DateTime.parse(code['expires_at'])
-                                      : null;
-                                  final expired = expiresAt != null &&
-                                      expiresAt.isBefore(DateTime.now());
+                                  final expiresAt = code['expires_at'] != null ? DateTime.parse(code['expires_at']) : null;
+                                  final expired = expiresAt != null && expiresAt.isBefore(DateTime.now());
                                   return ListTile(
                                     dense: true,
                                     contentPadding: EdgeInsets.zero,
                                     leading: Icon(
-                                      used
-                                          ? Icons.check_circle
-                                          : expired
-                                              ? Icons.cancel
-                                              : Icons.vpn_key,
-                                      color: used
-                                          ? AppColors.success
-                                          : expired
-                                              ? AppColors.error
-                                              : AppColors.primary,
+                                      used ? Icons.check_circle : expired ? Icons.cancel : Icons.vpn_key,
+                                      color: used ? AppColors.success : expired ? AppColors.error : AppColors.primary,
                                       size: 20,
                                     ),
                                     title: Text(
@@ -428,22 +334,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         fontFamily: 'monospace',
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        color: used || expired
-                                            ? AppColors.textSecondary
-                                            : AppColors.textPrimary,
-                                        decoration: used
-                                            ? TextDecoration.lineThrough
-                                            : null,
+                                        color: used || expired ? AppColors.textSecondary : AppColors.textPrimary,
+                                        decoration: used ? TextDecoration.lineThrough : null,
                                       ),
                                     ),
                                     subtitle: Text(
-                                      used
-                                          ? 'Použitý'
-                                          : expired
-                                              ? 'Vypršaný'
-                                              : expiresAt != null
-                                                  ? 'Platný do ${expiresAt.day}.${expiresAt.month}.${expiresAt.year}'
-                                                  : '',
+                                      used ? 'Použitý' : expired ? 'Vypršaný' : expiresAt != null ? 'Platný do ${expiresAt.day}.${expiresAt.month}.${expiresAt.year}' : '',
                                       style: const TextStyle(fontSize: 11),
                                     ),
                                     trailing: Row(
@@ -451,30 +347,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       children: [
                                         if (!used && !expired)
                                           IconButton(
-                                            icon: const Icon(Icons.copy,
-                                                size: 18),
+                                            icon: const Icon(Icons.copy, size: 18),
                                             onPressed: () async {
-                                              await Clipboard.setData(
-                                                  ClipboardData(
-                                                      text: code['code']
-                                                          as String));
+                                              await Clipboard.setData(ClipboardData(text: code['code'] as String));
                                               if (context.mounted) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  const SnackBar(
-                                                      content:
-                                                          Text('Kód skopírovaný')),
-                                                );
+                                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Kód skopírovaný')));
                                               }
                                             },
                                           ),
                                         IconButton(
-                                          icon: const Icon(Icons.delete_outline,
-                                              size: 18,
-                                              color: AppColors.error),
-                                          onPressed: () => _deleteInviteCode(
-                                              code['id'] as String,
-                                              building.id),
+                                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                                          onPressed: () => _deleteInviteCode(code['id'] as String, building.id),
                                         ),
                                       ],
                                     ),
@@ -491,18 +374,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
 
                 const SizedBox(height: 32),
-
-                // Sign out
                 OutlinedButton.icon(
                   onPressed: _signOut,
                   icon: const Icon(Icons.logout, color: AppColors.error),
-                  label: const Text(
-                    'Odhlásiť sa',
-                    style: TextStyle(color: AppColors.error),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.error),
-                  ),
+                  label: const Text('Odhlásiť sa', style: TextStyle(color: AppColors.error)),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.error)),
                 ),
               ],
             ),
@@ -523,32 +399,15 @@ class _InfoCard extends StatelessWidget {
   final String title;
   final String value;
 
-  const _InfoCard({
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
+  const _InfoCard({required this.icon, required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
         leading: Icon(icon, color: AppColors.primary),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        subtitle: Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        title: Text(title, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        subtitle: Text(value, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w500)),
       ),
     );
   }
