@@ -29,16 +29,35 @@ class ContactsScreen extends ConsumerWidget {
               onPressed: () => _showContactDialog(context, ref, null),
               backgroundColor: AppColors.primary,
               icon: const Icon(Icons.add, color: Colors.white),
-              label: const Text('Pridať kontakt',
-                  style: TextStyle(color: Colors.white)),
+              label: const Text('Pridať kontakt', style: TextStyle(color: Colors.white)),
             )
           : null,
       body: contactsAsync.when(
         data: (contacts) {
           if (contacts.isEmpty) {
-            return const EmptyStateWidget(
-              icon: Icons.contacts_outlined,
-              message: 'Žiadne kontakty',
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.contacts_outlined, size: 64, color: AppColors.textSecondary.withOpacity(0.4)),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Žiadne kontakty',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isManager
+                          ? 'Pridajte dôležité kontakty pre obyvateľov.'
+                          : 'Správca zatiaľ nepridali žiadne kontakty.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
             );
           }
           return RefreshIndicator(
@@ -49,12 +68,8 @@ class ContactsScreen extends ConsumerWidget {
               itemBuilder: (context, i) => _ContactCard(
                 contact: contacts[i],
                 isManager: isManager,
-                onEdit: isManager
-                    ? () => _showContactDialog(context, ref, contacts[i])
-                    : null,
-                onDelete: isManager
-                    ? () => _confirmDelete(context, ref, contacts[i])
-                    : null,
+                onEdit: isManager ? () => _showContactDialog(context, ref, contacts[i]) : null,
+                onDelete: isManager ? () => _confirmDelete(context, ref, contacts[i]) : null,
               ),
             ),
           );
@@ -68,25 +83,21 @@ class ContactsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _showContactDialog(
-      BuildContext context, WidgetRef ref, ContactModel? existing) async {
+  Future<void> _showContactDialog(BuildContext context, WidgetRef ref, ContactModel? existing) async {
     await showDialog<void>(
       context: context,
       builder: (_) => _ContactDialog(existing: existing, ref: ref),
     );
   }
 
-  Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, ContactModel contact) async {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, ContactModel contact) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Odstrániť kontakt'),
         content: Text('Naozaj chcete odstrániť "${contact.name}"?'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Zrušiť')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Zrušiť')),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -100,17 +111,12 @@ class ContactsScreen extends ConsumerWidget {
         await ref.read(deleteContactProvider.notifier).deleteContact(contact.id);
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Chyba: $e'),
-            backgroundColor: AppColors.error,
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Chyba: $e'), backgroundColor: AppColors.error));
         }
       }
     }
   }
 }
-
-// ── Contact Card ──────────────────────────────────────────────────────────
 
 class _ContactCard extends StatelessWidget {
   final ContactModel contact;
@@ -118,12 +124,7 @@ class _ContactCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
-  const _ContactCard({
-    required this.contact,
-    required this.isManager,
-    this.onEdit,
-    this.onDelete,
-  });
+  const _ContactCard({required this.contact, required this.isManager, this.onEdit, this.onDelete});
 
   Future<void> _call() async {
     final uri = Uri(scheme: 'tel', path: contact.phone);
@@ -139,25 +140,18 @@ class _ContactCard extends StatelessWidget {
           backgroundColor: AppColors.primary.withValues(alpha: 0.12),
           child: const Icon(Icons.person, color: AppColors.primary),
         ),
-        title: Text(contact.name,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(contact.name, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (contact.description != null && contact.description!.isNotEmpty)
-              Text(contact.description!,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
+              Text(contact.description!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             const SizedBox(height: 2),
             GestureDetector(
               onTap: _call,
               child: Text(
                 contact.phone,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
-                  decoration: TextDecoration.underline,
-                ),
+                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500, decoration: TextDecoration.underline),
               ),
             ),
           ],
@@ -167,28 +161,15 @@ class _ContactCard extends StatelessWidget {
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined,
-                        color: AppColors.textSecondary),
-                    onPressed: onEdit,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        color: AppColors.error),
-                    onPressed: onDelete,
-                  ),
+                  IconButton(icon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary), onPressed: onEdit),
+                  IconButton(icon: const Icon(Icons.delete_outline, color: AppColors.error), onPressed: onDelete),
                 ],
               )
-            : IconButton(
-                icon: const Icon(Icons.call, color: AppColors.primary),
-                onPressed: _call,
-              ),
+            : null,
       ),
     );
   }
 }
-
-// ── Add / Edit Dialog ─────────────────────────────────────────────────────
 
 class _ContactDialog extends StatefulWidget {
   final ContactModel? existing;
@@ -212,8 +193,7 @@ class _ContactDialogState extends State<_ContactDialog> {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.existing?.name ?? '');
     _phoneCtrl = TextEditingController(text: widget.existing?.phone ?? '');
-    _descCtrl =
-        TextEditingController(text: widget.existing?.description ?? '');
+    _descCtrl = TextEditingController(text: widget.existing?.description ?? '');
   }
 
   @override
@@ -232,27 +212,20 @@ class _ContactDialogState extends State<_ContactDialog> {
         await widget.ref.read(createContactProvider.notifier).createContact(
               name: _nameCtrl.text.trim(),
               phone: _phoneCtrl.text.trim(),
-              description: _descCtrl.text.trim().isEmpty
-                  ? null
-                  : _descCtrl.text.trim(),
+              description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
             );
       } else {
         await widget.ref.read(updateContactProvider.notifier).updateContact(
               id: widget.existing!.id,
               name: _nameCtrl.text.trim(),
               phone: _phoneCtrl.text.trim(),
-              description: _descCtrl.text.trim().isEmpty
-                  ? null
-                  : _descCtrl.text.trim(),
+              description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
             );
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Chyba: $e'),
-          backgroundColor: AppColors.error,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Chyba: $e'), backgroundColor: AppColors.error));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -274,51 +247,33 @@ class _ContactDialogState extends State<_ContactDialog> {
               TextFormField(
                 controller: _nameCtrl,
                 textInputAction: TextInputAction.next,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Meno je povinné' : null,
-                decoration: const InputDecoration(
-                  labelText: 'Meno *',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Meno je povinné' : null,
+                decoration: const InputDecoration(labelText: 'Meno *', prefixIcon: Icon(Icons.person_outline)),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Telefón je povinný'
-                    : null,
-                decoration: const InputDecoration(
-                  labelText: 'Telefón *',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Telefón je povinný' : null,
+                decoration: const InputDecoration(labelText: 'Telefón *', prefixIcon: Icon(Icons.phone_outlined)),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descCtrl,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Popis (napr. Havarijná služba)',
-                  prefixIcon: Icon(Icons.label_outline),
-                ),
+                decoration: const InputDecoration(labelText: 'Popis (napr. Havarijná služba)', prefixIcon: Icon(Icons.label_outline)),
               ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(
-            onPressed: _saving ? null : () => Navigator.of(context).pop(),
-            child: const Text('Zrušiť')),
+        TextButton(onPressed: _saving ? null : () => Navigator.of(context).pop(), child: const Text('Zrušiť')),
         ElevatedButton(
           onPressed: _saving ? null : _save,
           child: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : Text(isEdit ? 'Uložiť' : 'Pridať'),
         ),
       ],

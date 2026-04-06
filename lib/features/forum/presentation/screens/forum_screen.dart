@@ -16,6 +16,8 @@ class ForumScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final postsAsync = ref.watch(forumPostsProvider);
+    final profileAsync = ref.watch(profileProvider);
+    final currentUserId = profileAsync.maybeWhen(data: (p) => p?.id, orElse: () => null);
 
     return Scaffold(
       appBar: const DomovnikAppBar(title: 'Fórum', showBack: false),
@@ -23,8 +25,7 @@ class ForumScreen extends ConsumerWidget {
         onPressed: () => _showCreatePostDialog(context, ref),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Nový príspevok',
-            style: TextStyle(color: Colors.white)),
+        label: const Text('Nový príspevok', style: TextStyle(color: Colors.white)),
       ),
       body: postsAsync.when(
         data: (posts) {
@@ -38,9 +39,13 @@ class ForumScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(12),
             itemCount: posts.length,
             itemBuilder: (context, index) {
+              final post = posts[index];
+              final isOwner = currentUserId == post.createdBy;
               return _PostCard(
-                post: posts[index],
-                onTap: () => _openPost(context, ref, posts[index]),
+                post: post,
+                isOwner: isOwner,
+                onTap: () => _openPost(context, ref, post),
+                onEdit: isOwner ? () => _showEditPostDialog(context, ref, post) : null,
               );
             },
           );
@@ -55,14 +60,23 @@ class ForumScreen extends ConsumerWidget {
   }
 
   void _showCreatePostDialog(BuildContext context, WidgetRef ref) {
-    final titleController = TextEditingController();
-    final contentController = TextEditingController();
+    _showPostDialog(context, ref, null);
+  }
+
+  void _showEditPostDialog(BuildContext context, WidgetRef ref, ForumPostModel post) {
+    _showPostDialog(context, ref, post);
+  }
+
+  void _showPostDialog(BuildContext context, WidgetRef ref, ForumPostModel? existing) {
+    final titleController = TextEditingController(text: existing?.title ?? '');
+    final contentController = TextEditingController(text: existing?.content ?? '');
     final formKey = GlobalKey<FormState>();
+    final isEdit = existing != null;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nový príspevok'),
+        title: Text(isEdit ? 'Upraviť príspevok' : 'Nový príspevok'),
         content: Form(
           key: formKey,
           child: Column(
@@ -71,16 +85,14 @@ class ForumScreen extends ConsumerWidget {
               TextFormField(
                 controller: titleController,
                 decoration: const InputDecoration(labelText: 'Nadpis *'),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Zadajte nadpis' : null,
+                validator: (v) => v == null || v.trim().isEmpty ? 'Zadajte nadpis' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: contentController,
                 decoration: const InputDecoration(labelText: 'Text *'),
                 maxLines: 4,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Zadajte text' : null,
+                validator: (v) => v == null || v.trim().isEmpty ? 'Zadajte text' : null,
               ),
             ],
           ),
@@ -94,14 +106,21 @@ class ForumScreen extends ConsumerWidget {
             onPressed: () async {
               if (!formKey.currentState!.validate()) return;
               Navigator.of(ctx).pop();
-              await ref
-                  .read(createForumPostProvider.notifier)
-                  .createPost(
-                    title: titleController.text.trim(),
-                    content: contentController.text.trim(),
-                  );
+              if (isEdit) {
+                await ref.read(forumRepositoryProvider).updatePost(
+                  id: existing!.id,
+                  title: titleController.text.trim(),
+                  content: contentController.text.trim(),
+                );
+                ref.invalidate(forumPostsProvider);
+              } else {
+                await ref.read(createForumPostProvider.notifier).createPost(
+                  title: titleController.text.trim(),
+                  content: contentController.text.trim(),
+                );
+              }
             },
-            child: const Text('Pridať'),
+            child: Text(isEdit ? 'Uložiť' : 'Pridať'),
           ),
         ],
       ),
@@ -122,9 +141,16 @@ class ForumScreen extends ConsumerWidget {
 
 class _PostCard extends StatelessWidget {
   final ForumPostModel post;
+  final bool isOwner;
   final VoidCallback onTap;
+  final VoidCallback? onEdit;
 
-  const _PostCard({required this.post, required this.onTap});
+  const _PostCard({
+    required this.post,
+    required this.isOwner,
+    required this.onTap,
+    this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -138,46 +164,50 @@ class _PostCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                post.title,
-                style: Theme.of(context).textTheme.titleMedium,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      post.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (isOwner)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: InkWell(
+                        onTap: onEdit,
+                        borderRadius: BorderRadius.circular(16),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 6),
               Text(
                 post.content,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.textSecondary),
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(Icons.person_outline,
-                      size: 14, color: AppColors.textSecondary),
+                  const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 4),
-                  Text(
-                    post.createdByName ?? 'Neznámy',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  ),
+                  Text(post.createdByName ?? 'Neznámy', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   const Spacer(),
-                  const Icon(Icons.chat_bubble_outline,
-                      size: 14, color: AppColors.textSecondary),
+                  const Icon(Icons.chat_bubble_outline, size: 14, color: AppColors.textSecondary),
                   const SizedBox(width: 4),
-                  Text(
-                    '${post.replyCount}',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  ),
+                  Text('${post.replyCount}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   const SizedBox(width: 12),
-                  Text(
-                    DateFormatter.formatRelative(post.createdAt),
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  ),
+                  Text(DateFormatter.formatRelative(post.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
             ],
@@ -194,12 +224,10 @@ class ForumPostDetailScreen extends ConsumerStatefulWidget {
   const ForumPostDetailScreen({super.key, required this.post});
 
   @override
-  ConsumerState<ForumPostDetailScreen> createState() =>
-      _ForumPostDetailScreenState();
+  ConsumerState<ForumPostDetailScreen> createState() => _ForumPostDetailScreenState();
 }
 
-class _ForumPostDetailScreenState
-    extends ConsumerState<ForumPostDetailScreen> {
+class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
   final _replyController = TextEditingController();
 
   @override
@@ -210,8 +238,7 @@ class _ForumPostDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final repliesAsync =
-        ref.watch(forumRepliesProvider(widget.post.id));
+    final repliesAsync = ref.watch(forumRepliesProvider(widget.post.id));
     final profileAsync = ref.watch(profileProvider);
 
     return Scaffold(
@@ -222,7 +249,6 @@ class _ForumPostDetailScreenState
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Original post
                 Card(
                   color: AppColors.primary.withOpacity(0.05),
                   child: Padding(
@@ -230,55 +256,30 @@ class _ForumPostDetailScreenState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.post.content,
-                          style: const TextStyle(fontSize: 15),
-                        ),
+                        Text(widget.post.content, style: const TextStyle(fontSize: 15)),
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            const Icon(Icons.person_outline,
-                                size: 14, color: AppColors.textSecondary),
+                            const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
-                            Text(
-                              widget.post.createdByName ?? 'Neznámy',
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500),
-                            ),
+                            Text(widget.post.createdByName ?? 'Neznámy', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                             const Spacer(),
-                            Text(
-                              DateFormatter.formatRelative(
-                                  widget.post.createdAt),
-                              style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary),
-                            ),
+                            Text(DateFormatter.formatRelative(widget.post.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
                         ),
-                        // Delete button for author/manager
                         profileAsync.maybeWhen(
                           data: (profile) {
                             if (profile == null) return const SizedBox.shrink();
-                            if (profile.id == widget.post.createdBy ||
-                                profile.isManager) {
+                            if (profile.id == widget.post.createdBy || profile.isManager) {
                               return Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton.icon(
                                   onPressed: () async {
-                                    await ref
-                                        .read(forumRepositoryProvider)
-                                        .deletePost(widget.post.id);
-                                    if (context.mounted) {
-                                      Navigator.of(context).pop();
-                                    }
+                                    await ref.read(forumRepositoryProvider).deletePost(widget.post.id);
+                                    if (context.mounted) Navigator.of(context).pop();
                                   },
-                                  icon: const Icon(Icons.delete_outline,
-                                      color: AppColors.error, size: 16),
-                                  label: const Text('Vymazať',
-                                      style:
-                                          TextStyle(color: AppColors.error)),
+                                  icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 16),
+                                  label: const Text('Vymazať', style: TextStyle(color: AppColors.error)),
                                 ),
                               );
                             }
@@ -291,35 +292,23 @@ class _ForumPostDetailScreenState
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text('Odpovede',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 15)),
+                const Text('Odpovede', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                 const SizedBox(height: 8),
-
-                // Replies
                 repliesAsync.when(
                   data: (replies) {
                     if (replies.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text(
-                          'Zatiaľ žiadne odpovede',
-                          style: TextStyle(color: AppColors.textSecondary),
-                          textAlign: TextAlign.center,
-                        ),
+                        child: Text('Zatiaľ žiadne odpovede', style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
                       );
                     }
                     return Column(
-                      children: replies
-                          .map((reply) => _ReplyCard(
-                                reply: reply,
-                                onDelete: () async {
-                                  await ref
-                                      .read(forumRepositoryProvider)
-                                      .deleteReply(reply.id);
-                                },
-                              ))
-                          .toList(),
+                      children: replies.map((reply) => _ReplyCard(
+                        reply: reply,
+                        onDelete: () async {
+                          await ref.read(forumRepositoryProvider).deleteReply(reply.id);
+                        },
+                      )).toList(),
                     );
                   },
                   loading: () => const LoadingWidget(),
@@ -328,14 +317,11 @@ class _ForumPostDetailScreenState
               ],
             ),
           ),
-
-          // Reply input
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(
-                  top: BorderSide(color: AppColors.divider)),
+              border: Border(top: BorderSide(color: AppColors.divider)),
             ),
             child: Row(
               children: [
@@ -345,8 +331,7 @@ class _ForumPostDetailScreenState
                     decoration: const InputDecoration(
                       hintText: 'Napísať odpoveď...',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                     maxLines: 2,
                     minLines: 1,
@@ -356,9 +341,7 @@ class _ForumPostDetailScreenState
                 IconButton(
                   onPressed: _sendReply,
                   icon: const Icon(Icons.send, color: AppColors.primary),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
-                  ),
+                  style: IconButton.styleFrom(backgroundColor: AppColors.primary.withOpacity(0.1)),
                 ),
               ],
             ),
@@ -372,9 +355,7 @@ class _ForumPostDetailScreenState
     final text = _replyController.text.trim();
     if (text.isEmpty) return;
     _replyController.clear();
-    await ref
-        .read(createForumReplyProvider.notifier)
-        .createReply(content: text, postId: widget.post.id);
+    await ref.read(createForumReplyProvider.notifier).createReply(content: text, postId: widget.post.id);
   }
 }
 
@@ -399,29 +380,17 @@ class _ReplyCard extends ConsumerWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.person_outline,
-                    size: 13, color: AppColors.textSecondary),
+                const Icon(Icons.person_outline, size: 13, color: AppColors.textSecondary),
                 const SizedBox(width: 4),
-                Text(
-                  reply.createdByName ?? 'Neznámy',
-                  style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500),
-                ),
+                Text(reply.createdByName ?? 'Neznámy', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                 const Spacer(),
-                Text(
-                  DateFormatter.formatRelative(reply.createdAt),
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
-                ),
+                Text(DateFormatter.formatRelative(reply.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 profileAsync.maybeWhen(
                   data: (profile) {
                     if (profile == null) return const SizedBox.shrink();
                     if (profile.id == reply.createdBy || profile.isManager) {
                       return IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            size: 16, color: AppColors.error),
+                        icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
                         onPressed: onDelete,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),

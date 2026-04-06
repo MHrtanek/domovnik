@@ -240,22 +240,13 @@ class _DocumentCard extends StatelessWidget {
           style: const TextStyle(
               fontSize: 12, color: AppColors.textSecondary),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.open_in_new, color: AppColors.primary),
-              tooltip: 'Otvoriť',
-              onPressed: _open,
-            ),
-            if (isManager)
-              IconButton(
+        trailing: isManager
+            ? IconButton(
                 icon: const Icon(Icons.delete_outline, color: AppColors.error),
                 tooltip: 'Odstrániť',
                 onPressed: onDelete,
-              ),
-          ],
-        ),
+              )
+            : null,
         onTap: _open,
       ),
     );
