@@ -53,9 +53,17 @@ class PollsScreen extends ConsumerWidget {
               itemCount: polls.length,
               itemBuilder: (context, index) {
                 final poll = polls[index];
+                final isManager = profileAsync.maybeWhen(
+                  data: (p) => p?.isManager == true,
+                  orElse: () => false,
+                );
                 return _PollCard(
                   poll: poll,
+                  isManager: isManager,
                   onTap: () => context.push('/polls/${poll.id}'),
+                  onDelete: isManager
+                      ? () => _confirmDelete(context, ref, poll)
+                      : null,
                 );
               },
             ),
@@ -71,11 +79,49 @@ class PollsScreen extends ConsumerWidget {
   }
 }
 
+Future<void> _confirmDelete(
+    BuildContext context, WidgetRef ref, PollModel poll) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Odstrániť hlasovanie'),
+      content: Text('Naozaj chcete odstrániť hlasovanie „${poll.question}“? Odstránia sa aj všetky hlasy.'),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Zrušiť')),
+        ElevatedButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+          child: const Text('Odstrániť'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+  try {
+    await ref.read(deletePollProvider.notifier).deletePoll(poll.id);
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Chyba: $e'), backgroundColor: AppColors.error),
+      );
+    }
+  }
+}
+
 class _PollCard extends StatelessWidget {
   final PollModel poll;
+  final bool isManager;
   final VoidCallback onTap;
+  final VoidCallback? onDelete;
 
-  const _PollCard({required this.poll, required this.onTap});
+  const _PollCard({
+    required this.poll,
+    required this.isManager,
+    required this.onTap,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +135,7 @@ class _PollCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
@@ -96,7 +143,19 @@ class _PollCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   _PollStatusChip(expired: poll.isExpired, voted: poll.hasVoted),
+                  if (onDelete != null) ...[
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: onDelete,
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.delete_outline,
+                            size: 18, color: AppColors.error),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
@@ -170,7 +229,7 @@ class _PollStatusChip extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.textDisabled.withOpacity(0.2),
+          color: AppColors.textDisabled.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Text(
@@ -184,7 +243,7 @@ class _PollStatusChip extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.success.withOpacity(0.1),
+          color: AppColors.success.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Text(
@@ -201,7 +260,7 @@ class _PollStatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
+        color: AppColors.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: const Text(

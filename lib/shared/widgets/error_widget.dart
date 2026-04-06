@@ -24,7 +24,7 @@ class DomovnikErrorWidget extends StatelessWidget {
             Icon(
               icon,
               size: 56,
-              color: AppColors.error.withOpacity(0.7),
+              color: AppColors.error.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 16),
             Text(

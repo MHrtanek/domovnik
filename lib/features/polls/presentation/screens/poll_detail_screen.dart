@@ -19,8 +19,61 @@ class PollDetailScreen extends ConsumerWidget {
     final pollAsync = ref.watch(pollDetailProvider(pollId));
     final profileAsync = ref.watch(profileProvider);
 
+    final isManager = profileAsync.maybeWhen(
+      data: (p) => p?.isManager == true,
+      orElse: () => false,
+    );
+
     return Scaffold(
-      appBar: const DomovnikAppBar(title: 'Hlasovanie'),
+      appBar: DomovnikAppBar(
+        title: 'Hlasovanie',
+        actions: isManager
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.white),
+                  tooltip: 'Odstrániť hlasovanie',
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Odstrániť hlasovanie'),
+                        content: const Text(
+                            'Naozaj chcete odstrániť toto hlasovanie? Odstránia sa aj všetky hlasy.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(ctx).pop(false),
+                            child: const Text('Zrušiť'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.of(ctx).pop(true),
+                            style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.error),
+                            child: const Text('Odstrániť'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed != true) return;
+                    try {
+                      await ref
+                          .read(deletePollProvider.notifier)
+                          .deletePoll(pollId);
+                      if (context.mounted) Navigator.of(context).pop();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Chyba: $e'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ]
+            : null,
+      ),
       body: pollAsync.when(
         data: (poll) {
           if (poll == null) {
@@ -162,7 +215,7 @@ class _PollDetailBodyState extends State<_PollDetailBody> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.textDisabled.withOpacity(0.2),
+                        color: AppColors.textDisabled.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
@@ -179,7 +232,7 @@ class _PollDetailBodyState extends State<_PollDetailBody> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.1),
+                        color: AppColors.success.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
@@ -277,7 +330,7 @@ class _OptionItem extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: selected
-                ? AppColors.primary.withOpacity(0.08)
+                ? AppColors.primary.withValues(alpha: 0.08)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
@@ -332,7 +385,7 @@ class _OptionItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: percentage,
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                     valueColor: const AlwaysStoppedAnimation(AppColors.primary),
                     minHeight: 8,
                   ),

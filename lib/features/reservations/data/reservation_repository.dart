@@ -120,16 +120,23 @@ class ReservationRepository {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
 
-      // Skontroluj či čas nie je obsadený
-      final existing = await _client
+      // Skontroluj skĺdadanie časových intervalov: nová rezervácia sa prekýva
+      // s existujúcou ak timeFrom < existing.timeTo && timeTo > existing.timeFrom
+      final existingList = await _client
           .from('reservations')
-          .select('id')
+          .select('id, time_from, time_to')
           .eq('amenity_id', amenityId)
-          .eq('date', dateStr)
-          .eq('time_from', timeFrom)
-          .maybeSingle();
+          .eq('date', dateStr);
 
-      if (existing != null) {
+      final overlaps = (existingList as List<dynamic>).any((r) {
+        final existFrom = r['time_from'] as String;
+        final existTo = r['time_to'] as String;
+        // String HH:mm comparison works correctly for same-day slots
+        return timeFrom.compareTo(existTo) < 0 &&
+            timeTo.compareTo(existFrom) > 0;
+      });
+
+      if (overlaps) {
         throw Exception('Tento čas je už obsadený');
       }
 

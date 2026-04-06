@@ -45,7 +45,7 @@ class AnnouncementsScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.campaign_outlined, size: 64, color: AppColors.textSecondary.withOpacity(0.4)),
+                    Icon(Icons.campaign_outlined, size: 64, color: AppColors.textSecondary.withValues(alpha: 0.4)),
                     const SizedBox(height: 16),
                     const Text(
                       'Žiadne oznamy',

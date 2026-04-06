@@ -83,3 +83,19 @@ class VoteNotifier extends AsyncNotifier<void> {
 
 final voteProvider =
     AsyncNotifierProvider<VoteNotifier, void>(VoteNotifier.new);
+
+class DeletePollNotifier extends AsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  Future<void> deletePoll(String pollId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(pollRepositoryProvider).deletePoll(pollId);
+      ref.invalidate(pollsProvider);
+    });
+  }
+}
+
+final deletePollProvider =
+    AsyncNotifierProvider<DeletePollNotifier, void>(DeletePollNotifier.new);

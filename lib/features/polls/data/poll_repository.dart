@@ -165,4 +165,25 @@ class PollRepository {
       return false;
     }
   }
+
+  Future<void> deletePoll(String pollId) async {
+    try {
+      // Cascade: delete votes, then options, then poll
+      await _client
+          .from(SupabaseConstants.tablPollVotes)
+          .delete()
+          .eq('poll_id', pollId);
+      await _client
+          .from(SupabaseConstants.tablPollOptions)
+          .delete()
+          .eq('poll_id', pollId);
+      await _client
+          .from(SupabaseConstants.tablPolls)
+          .delete()
+          .eq('id', pollId);
+    } catch (e) {
+      debugPrint('PollRepository.deletePoll error: $e');
+      rethrow;
+    }
+  }
 }

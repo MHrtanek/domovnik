@@ -41,7 +41,7 @@ class ContactsScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.contacts_outlined, size: 64, color: AppColors.textSecondary.withOpacity(0.4)),
+                    Icon(Icons.contacts_outlined, size: 64, color: AppColors.textSecondary.withValues(alpha: 0.4)),
                     const SizedBox(height: 16),
                     const Text(
                       'Žiadne kontakty',

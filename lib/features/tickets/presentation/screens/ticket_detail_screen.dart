@@ -378,7 +378,7 @@ class _TimelineStep extends StatelessWidget {
               Container(
                 width: 2,
                 height: 24,
-                color: active ? color.withOpacity(0.3) : AppColors.divider,
+                color: active ? color.withValues(alpha: 0.3) : AppColors.divider,
               ),
           ],
         ),

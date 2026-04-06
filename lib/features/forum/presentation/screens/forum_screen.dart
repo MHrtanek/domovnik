@@ -250,7 +250,7 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 Card(
-                  color: AppColors.primary.withOpacity(0.05),
+                  color: AppColors.primary.withValues(alpha: 0.05),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -382,7 +382,7 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                 IconButton(
                   onPressed: _sendReply,
                   icon: const Icon(Icons.send, color: AppColors.primary),
-                  style: IconButton.styleFrom(backgroundColor: AppColors.primary.withOpacity(0.1)),
+                  style: IconButton.styleFrom(backgroundColor: AppColors.primary.withValues(alpha: 0.1)),
                 ),
               ],
             ),
