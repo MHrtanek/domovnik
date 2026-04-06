@@ -113,11 +113,38 @@ class ForumRepository {
     }
   }
 
+  Future<void> updatePost({required String id, required String title, required String content}) async {
+    try {
+      await _client.from('forum_posts').update({'title': title, 'content': content}).eq('id', id);
+    } catch (e) {
+      debugPrint('ForumRepository.updatePost error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> deleteReply(String replyId) async {
     try {
       await _client.from('forum_replies').delete().eq('id', replyId);
     } catch (e) {
       debugPrint('ForumRepository.deleteReply error: $e');
+      rethrow;
+    }
+  }
+}
+
+extension ForumRepositoryUpdate on ForumRepository {
+  Future<void> updatePost({
+    required String id,
+    required String title,
+    required String content,
+  }) async {
+    try {
+      await _client.from('forum_posts').update({
+        'title': title,
+        'content': content,
+      }).eq('id', id);
+    } catch (e) {
+      debugPrint('ForumRepository.updatePost error: $e');
       rethrow;
     }
   }

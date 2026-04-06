@@ -14,6 +14,7 @@ import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
+import '../../../../features/buildings/presentation/providers/residents_count_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -66,6 +67,107 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _changePassword() async {
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Zmeniť heslo'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: newPasswordController,
+                obscureText: obscureNew,
+                decoration: InputDecoration(
+                  labelText: 'Nové heslo',
+                  prefixIcon: const Icon(Icons.lock_outlined),
+                  suffixIcon: IconButton(
+                    icon: Icon(obscureNew ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    onPressed: () => setDialogState(() => obscureNew = !obscureNew),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: confirmPasswordController,
+                obscureText: obscureConfirm,
+                decoration: InputDecoration(
+                  labelText: 'Potvrdiť heslo',
+                  prefixIcon: const Icon(Icons.lock_outlined),
+                  suffixIcon: IconButton(
+                    icon: Icon(obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => ctx.pop(),
+              child: const Text('Zrušiť'),
+            ),
+            ElevatedButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final newPass = newPasswordController.text;
+                      final confirmPass = confirmPasswordController.text;
+
+                      if (newPass.length < 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Heslo musí mať aspoň 6 znakov'), backgroundColor: AppColors.error),
+                        );
+                        return;
+                      }
+                      if (newPass != confirmPass) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Heslá sa nezhodujú'), backgroundColor: AppColors.error),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => saving = true);
+                      try {
+                        await Supabase.instance.client.auth.updateUser(
+                          UserAttributes(password: newPass),
+                        );
+                        if (ctx.mounted) ctx.pop();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Heslo bolo úspešne zmenené'), backgroundColor: AppColors.success),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Chyba: ${e.toString()}'), backgroundColor: AppColors.error),
+                          );
+                        }
+                      } finally {
+                        setDialogState(() => saving = false);
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Zmeniť'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
   }
 
   Future<void> _signOut() async {
@@ -130,7 +232,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         'created_by': profile.id,
         'expires_at': DateTime.now().add(const Duration(days: 7)).toIso8601String(),
       });
-      setState(() => _codesLoaded = false); // force reload
+      setState(() => _codesLoaded = false);
       await _loadInviteCodes(buildingId);
       if (mounted) {
         await Clipboard.setData(ClipboardData(text: code));
@@ -152,7 +254,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await Supabase.instance.client.from('invite_codes').delete().eq('id', codeId);
       setState(() => _codesLoaded = false);
       await _loadInviteCodes(buildingId);
-    } catch (_) {}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Nepodarilo sa odstraňovať kód'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -219,7 +330,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                 buildingAsync.when(
                   data: (building) => building != null
-                      ? _InfoCard(icon: Icons.apartment, title: 'Budova', value: '${building.name}\n${building.address}')
+                      ? _InfoCard(icon: Icons.apartment, title: 'Budova', value: '${building.name}\n${building.address}\n${ref.watch(residentsCountProvider(building.id)).maybeWhen(data: (c) => '$c obyvateľov', orElse: () => '')}')
                       : const SizedBox.shrink(),
                   loading: () => const LoadingWidget(),
                   error: (_, __) => const SizedBox.shrink(),
@@ -277,7 +388,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ],
                 ],
 
-                // Invite kódy - len pre správcu
                 if (profile.isManager) ...[
                   const SizedBox(height: 24),
                   buildingAsync.when(
@@ -374,11 +484,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
 
                 const SizedBox(height: 32),
+
+                OutlinedButton.icon(
+                  onPressed: _changePassword,
+                  icon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                  label: const Text('Zmeniť heslo', style: TextStyle(color: AppColors.primary)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primary),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 OutlinedButton.icon(
                   onPressed: _signOut,
                   icon: const Icon(Icons.logout, color: AppColors.error),
                   label: const Text('Odhlásiť sa', style: TextStyle(color: AppColors.error)),
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.error)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.error),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
                 ),
               ],
             ),

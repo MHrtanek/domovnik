@@ -19,6 +19,7 @@ file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/auth/presentatio
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/buildings/data/building_repository.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/buildings/models/building_model.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/buildings/presentation/providers/building_provider.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/buildings/presentation/providers/residents_count_provider.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/contacts/data/contact_repository.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/contacts/models/contact_model.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/contacts/presentation/providers/contacts_provider.dart

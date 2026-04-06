@@ -393,10 +393,42 @@ class _MyReservationsTab extends ConsumerWidget {
                             icon: const Icon(Icons.delete_outline,
                                 color: AppColors.error, size: 20),
                             onPressed: () async {
-                              await ref
-                                  .read(reservationRepositoryProvider)
-                                  .deleteReservation(r.id);
-                              ref.invalidate(allReservationsProvider);
+                              final confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Zrušiť rezerváciu'),
+                                  content: Text(
+                                    'Naozaj chcete zrušiť rezerváciu na ${r.amenityName} ${_dateFormat.format(r.date)} ${r.timeFrom}–${r.timeTo}?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(ctx).pop(false),
+                                      child: const Text('Nie'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.of(ctx).pop(true),
+                                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                                      child: const Text('Zrušiť'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirmed != true) return;
+                              try {
+                                await ref
+                                    .read(reservationRepositoryProvider)
+                                    .deleteReservation(r.id);
+                                ref.invalidate(allReservationsProvider);
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Chyba: $e'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                }
+                              }
                             },
                           ),
                       ],
@@ -506,10 +538,42 @@ class _ManageAmenitiesTab extends ConsumerWidget {
                     icon: const Icon(Icons.delete_outline,
                         color: AppColors.error),
                     onPressed: () async {
-                      await ref
-                          .read(reservationRepositoryProvider)
-                          .deleteAmenity(a.id);
-                      ref.invalidate(amenitiesProvider);
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Odstrániť priestor'),
+                          content: Text(
+                            'Naozaj chcete odstrániť priestor „${a.name}“? Odstránia sa aj všetky jeho rezervácie.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('Zrušiť'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                              child: const Text('Odstrániť'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed != true) return;
+                      try {
+                        await ref
+                            .read(reservationRepositoryProvider)
+                            .deleteAmenity(a.id);
+                        ref.invalidate(amenitiesProvider);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Chyba: $e'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      }
                     },
                   ),
                 ),

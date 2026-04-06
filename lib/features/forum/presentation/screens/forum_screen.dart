@@ -275,8 +275,38 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                                 alignment: Alignment.centerRight,
                                 child: TextButton.icon(
                                   onPressed: () async {
-                                    await ref.read(forumRepositoryProvider).deletePost(widget.post.id);
-                                    if (context.mounted) Navigator.of(context).pop();
+                                    final confirmed = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                        title: const Text('Vymazať príspevok'),
+                                        content: const Text('Naozaj chcete vymazať tento príspevok aj so všetkými odpoveďami?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.of(ctx).pop(false),
+                                            child: const Text('Zrušiť'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.of(ctx).pop(true),
+                                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                                            child: const Text('Vymazať'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirmed != true) return;
+                                    try {
+                                      await ref.read(forumRepositoryProvider).deletePost(widget.post.id);
+                                      if (context.mounted) Navigator.of(context).pop();
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Chyba: $e'),
+                                            backgroundColor: AppColors.error,
+                                          ),
+                                        );
+                                      }
+                                    }
                                   },
                                   icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 16),
                                   label: const Text('Vymazať', style: TextStyle(color: AppColors.error)),
@@ -306,7 +336,18 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                       children: replies.map((reply) => _ReplyCard(
                         reply: reply,
                         onDelete: () async {
-                          await ref.read(forumRepositoryProvider).deleteReply(reply.id);
+                          try {
+                            await ref.read(forumRepositoryProvider).deleteReply(reply.id);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Chyba: $e'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          }
                         },
                       )).toList(),
                     );

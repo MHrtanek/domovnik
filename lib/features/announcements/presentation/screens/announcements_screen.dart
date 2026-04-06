@@ -18,32 +18,50 @@ class AnnouncementsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final announcementsAsync = ref.watch(buildingAnnouncementsProvider);
     final profileAsync = ref.watch(profileProvider);
+    final isManager = profileAsync.maybeWhen(
+      data: (p) => p?.isManager ?? false,
+      orElse: () => false,
+    );
 
     return Scaffold(
       appBar: const DomovnikAppBar(
         title: 'Oznamy',
         showBack: false,
       ),
-      floatingActionButton: profileAsync.maybeWhen(
-        data: (profile) => profile?.isManager == true
-            ? FloatingActionButton.extended(
-                onPressed: () => context.push('/announcements/create'),
-                backgroundColor: AppColors.primary,
-                icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text(
-                  'Nový oznam',
-                  style: TextStyle(color: Colors.white),
-                ),
-              )
-            : null,
-        orElse: () => null,
-      ),
+      floatingActionButton: isManager
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/announcements/create'),
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('Nový oznam', style: TextStyle(color: Colors.white)),
+            )
+          : null,
       body: announcementsAsync.when(
         data: (announcements) {
           if (announcements.isEmpty) {
-            return const EmptyStateWidget(
-              icon: Icons.campaign_outlined,
-              message: 'Žiadne oznamy',
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.campaign_outlined, size: 64, color: AppColors.textSecondary.withOpacity(0.4)),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Žiadne oznamy',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      isManager
+                          ? 'Informujte obyvateľov o dôležitých veciach.'
+                          : 'Správca zatiaľ nepridali žiadne oznamy.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
             );
           }
 
@@ -55,16 +73,10 @@ class AnnouncementsScreen extends ConsumerWidget {
                 final announcement = announcements[index];
                 return _AnnouncementCard(
                   announcement: announcement,
-                  isManager: profileAsync.maybeWhen(
-                    data: (p) => p?.isManager ?? false,
-                    orElse: () => false,
-                  ),
-                  onDelete: profileAsync.maybeWhen(
-                    data: (p) => p?.isManager == true
-                        ? () => _confirmDelete(context, ref, announcement)
-                        : null,
-                    orElse: () => null,
-                  ),
+                  isManager: isManager,
+                  onDelete: isManager
+                      ? () => _confirmDelete(context, ref, announcement)
+                      : null,
                 );
               },
             ),
@@ -90,10 +102,7 @@ class AnnouncementsScreen extends ConsumerWidget {
         title: const Text('Odstrániť oznam'),
         content: Text('Naozaj chcete odstrániť „${announcement.title}"?'),
         actions: [
-          TextButton(
-            onPressed: () => ctx.pop(false),
-            child: const Text('Zrušiť'),
-          ),
+          TextButton(onPressed: () => ctx.pop(false), child: const Text('Zrušiť')),
           ElevatedButton(
             onPressed: () => ctx.pop(true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -105,16 +114,11 @@ class AnnouncementsScreen extends ConsumerWidget {
 
     if (confirmed == true) {
       try {
-        await ref
-            .read(createAnnouncementProvider.notifier)
-            .deleteAnnouncement(announcement.id);
+        await ref.read(createAnnouncementProvider.notifier).deleteAnnouncement(announcement.id);
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Chyba: ${e.toString()}'),
-              backgroundColor: AppColors.error,
-            ),
+            SnackBar(content: Text('Chyba: ${e.toString()}'), backgroundColor: AppColors.error),
           );
         }
       }
@@ -153,11 +157,7 @@ class _AnnouncementCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (announcement.isUrgent) ...[
-                  const Icon(
-                    Icons.priority_high,
-                    color: AppColors.accent,
-                    size: 20,
-                  ),
+                  const Icon(Icons.priority_high, color: AppColors.accent, size: 20),
                   const SizedBox(width: 4),
                 ],
                 Expanded(
@@ -166,16 +166,13 @@ class _AnnouncementCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: announcement.isUrgent
-                          ? AppColors.accentDark
-                          : AppColors.textPrimary,
+                      color: announcement.isUrgent ? AppColors.accentDark : AppColors.textPrimary,
                     ),
                   ),
                 ),
                 if (onDelete != null)
                   IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        color: AppColors.textSecondary),
+                    icon: const Icon(Icons.delete_outline, color: AppColors.textSecondary),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     onPressed: onDelete,
@@ -185,40 +182,18 @@ class _AnnouncementCard extends StatelessWidget {
             if (announcement.isUrgent) ...[
               const SizedBox(height: 4),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(4)),
                 child: const Text(
                   'DÔLEŽITÉ',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1),
                 ),
               ),
             ],
             const SizedBox(height: 8),
-            Text(
-              announcement.content,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textPrimary,
-                height: 1.5,
-              ),
-            ),
+            Text(announcement.content, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.5)),
             const SizedBox(height: 8),
-            Text(
-              DateFormatter.formatRelative(announcement.createdAt),
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
+            Text(DateFormatter.formatRelative(announcement.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
       ),

@@ -91,19 +91,9 @@ class TicketsListScreen extends ConsumerWidget {
             child: ticketsAsync.when(
               data: (tickets) {
                 if (tickets.isEmpty) {
-                  return EmptyStateWidget(
+                  return const EmptyStateWidget(
                     icon: Icons.build_outlined,
                     message: 'Žiadne tikety',
-                    action: profileAsync.maybeWhen(
-                      data: (profile) => profile?.isResident == true
-                          ? ElevatedButton.icon(
-                              onPressed: () => context.push('/tickets/create'),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Vytvoriť tiket'),
-                            )
-                          : null,
-                      orElse: () => null,
-                    ),
                   );
                 }
 

@@ -31,7 +31,11 @@ abstract class DateFormatter {
   static String formatExpiry(DateTime? expiresAt) {
     if (expiresAt == null) return 'Bez obmedzenia';
     final now = DateTime.now();
-    if (expiresAt.isBefore(now)) return 'Skončilo ${_dateFormat.format(expiresAt.toLocal())}';
-    return 'Do ${_dateFormat.format(expiresAt.toLocal())}';
+    if (expiresAt.isBefore(now)) return 'Skončené';
+    final daysLeft = expiresAt.difference(now).inDays;
+    if (daysLeft == 0) return 'Končí dnes';
+    if (daysLeft == 1) return 'Zostáva 1 deň';
+    if (daysLeft < 5) return 'Zostávajú $daysLeft dni';
+    return 'Zostáva $daysLeft dní';
   }
 }

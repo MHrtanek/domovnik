@@ -39,7 +39,7 @@ class TicketDetailScreen extends ConsumerWidget {
 
 class _TicketDetailBody extends ConsumerStatefulWidget {
   final TicketModel ticket;
-  final AsyncValue profileAsync;
+  final AsyncValue<dynamic> profileAsync;
 
   const _TicketDetailBody({
     required this.ticket,
