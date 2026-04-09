@@ -1,0 +1,14 @@
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+ios/
+android/
+linux/
+windows/
+macos/
+*.g.dart
+*.freezed.dart
+pubspec.lock
+.git/
+*.log

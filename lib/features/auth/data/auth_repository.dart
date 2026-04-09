@@ -110,9 +110,9 @@ class AuthRepository {
     }
   }
 
-  Future<void> resetPassword(String email) async {
+  Future<void> resetPassword(String email, {String? redirectTo}) async {
     try {
-      await _client.auth.resetPasswordForEmail(email);
+      await _client.auth.resetPasswordForEmail(email, redirectTo: redirectTo);
     } catch (e) {
       debugPrint('AuthRepository.resetPassword error: $e');
       rethrow;

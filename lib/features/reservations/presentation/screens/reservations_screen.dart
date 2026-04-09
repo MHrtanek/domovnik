@@ -27,7 +27,11 @@ class ReservationsScreen extends ConsumerWidget {
     final reservationsAsync = ref.watch(allReservationsProvider);
 
     return Scaffold(
-      appBar: const DomovnikAppBar(title: 'Rezervácie', showBack: false),
+      appBar: const DomovnikAppBar(
+        title: 'Rezervácie',
+        showBack: false,
+        showLogout: true, // ← logout vpravo hore na mobile
+      ),
       body: profileAsync.when(
         data: (profile) {
           if (profile == null) return const LoadingWidget();
@@ -49,15 +53,12 @@ class ReservationsScreen extends ConsumerWidget {
                 Expanded(
                   child: TabBarView(
                     children: [
-                      // Tab 1: Rezervovať
                       _BookingTab(profile: profile),
-                      // Tab 2: Moje rezervácie
                       _MyReservationsTab(
                         reservationsAsync: reservationsAsync,
                         isManager: profile.isManager,
                         currentUserId: profile.id,
                       ),
-                      // Tab 3: Správca (len manager)
                       if (profile.isManager)
                         _ManageAmenitiesTab(amenitiesAsync: amenitiesAsync),
                     ],
@@ -130,6 +131,16 @@ class _BookingTabState extends ConsumerState<_BookingTab> {
     }
   }
 
+  /// Vráti index slotu v _timeSlots, alebo -1 ak nie je nájdený.
+  int _slotIndex(String slot) => _timeSlots.indexOf(slot);
+
+  /// Určí, či je slot "Do" validný voči vybranému "Od".
+  /// Slot "Do" musí byť NESKÔR ako "Od".
+  bool _isValidToSlot(String slot) {
+    if (_selectedTimeFrom == null) return false;
+    return _slotIndex(slot) > _slotIndex(_selectedTimeFrom!);
+  }
+
   Future<void> _submit() async {
     if (_selectedAmenity == null ||
         _selectedTimeFrom == null ||
@@ -172,9 +183,12 @@ class _BookingTabState extends ConsumerState<_BookingTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().contains('obsadený') || e.toString().contains('unique')
-                ? 'Tento čas je už obsadený'
-                : 'Chyba: ${e.toString()}'),
+            content: Text(
+              e.toString().contains('obsadený') ||
+                      e.toString().contains('unique')
+                  ? 'Tento čas je už obsadený'
+                  : 'Chyba: ${e.toString()}',
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -193,9 +207,11 @@ class _BookingTabState extends ConsumerState<_BookingTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Výber priestoru
-          const Text('Spoločný priestor',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          // ── Výber priestoru ───────────────────────────────────────────────
+          const Text(
+            'Spoločný priestor',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          ),
           const SizedBox(height: 8),
           amenitiesAsync.when(
             data: (amenities) {
@@ -239,15 +255,16 @@ class _BookingTabState extends ConsumerState<_BookingTab> {
 
           const SizedBox(height: 20),
 
-          // Výber dátumu
-          const Text('Dátum',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          // ── Výber dátumu ──────────────────────────────────────────────────
+          const Text(
+            'Dátum',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          ),
           const SizedBox(height: 8),
           InkWell(
             onTap: _pickDate,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 border: Border.all(color: AppColors.divider),
                 borderRadius: BorderRadius.circular(8),
@@ -265,15 +282,20 @@ class _BookingTabState extends ConsumerState<_BookingTab> {
 
           const SizedBox(height: 20),
 
-          // Výber času
-          const Text('Čas od',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          // ── Výber "Od" ────────────────────────────────────────────────────
+          const Text(
+            'Čas od',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: _timeSlots.map((slot) {
+              // Posledný slot nemôže byť "Od" (nemal by slotTo)
+              final isLastSlot = slot == _timeSlots.last;
               final taken = _takenSlots.contains(slot);
+              final disabled = taken || isLastSlot;
               final selected = _selectedTimeFrom == slot;
               return ChoiceChip(
                 label: Text(slot),
@@ -281,24 +303,79 @@ class _BookingTabState extends ConsumerState<_BookingTab> {
                 selectedColor: AppColors.primary,
                 disabledColor: Colors.grey.shade200,
                 labelStyle: TextStyle(
-                  color: taken
+                  color: disabled
                       ? Colors.grey
                       : selected
                           ? Colors.white
                           : AppColors.textPrimary,
                   fontSize: 12,
                 ),
-                onSelected: taken
+                onSelected: disabled
                     ? null
                     : (_) {
-                        final fromIndex = _timeSlots.indexOf(slot);
-                        final toSlot = fromIndex + 1 < _timeSlots.length
-                            ? _timeSlots[fromIndex + 1]
-                            : null;
                         setState(() {
                           _selectedTimeFrom = slot;
-                          _selectedTimeTo = toSlot;
+                          // Resetuj "Do" – user musí znova vybrať
+                          _selectedTimeTo = null;
                         });
+                      },
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ── Výber "Do" ────────────────────────────────────────────────────
+          Row(
+            children: [
+              const Text(
+                'Čas do',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+              ),
+              if (_selectedTimeFrom == null) ...[
+                const SizedBox(width: 8),
+                const Text(
+                  '(najprv vyberte čas Od)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _timeSlots.map((slot) {
+              // "Do" musí byť neskôr ako "Od"
+              final valid = _isValidToSlot(slot);
+              final taken = _takenSlots.contains(slot);
+              // Slot je disabled ak:
+              //  - ešte nie je vybrané "Od"
+              //  - slot nie je neskôr ako "Od"
+              //  - slot je obsadený
+              final disabled = _selectedTimeFrom == null || !valid || taken;
+              final selected = _selectedTimeTo == slot;
+              return ChoiceChip(
+                label: Text(slot),
+                selected: selected,
+                selectedColor: AppColors.secondary,
+                disabledColor: Colors.grey.shade100,
+                labelStyle: TextStyle(
+                  color: disabled
+                      ? Colors.grey.shade400
+                      : selected
+                          ? Colors.white
+                          : AppColors.textPrimary,
+                  fontSize: 12,
+                ),
+                onSelected: disabled
+                    ? null
+                    : (_) {
+                        setState(() => _selectedTimeTo = slot);
                       },
               );
             }).toList(),
@@ -309,13 +386,15 @@ class _BookingTabState extends ConsumerState<_BookingTab> {
             Text(
               'Rezervácia: $_selectedTimeFrom – $_selectedTimeTo',
               style: const TextStyle(
-                  color: AppColors.primary, fontWeight: FontWeight.w500),
+                color: AppColors.primary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
 
           const SizedBox(height: 20),
 
-          // Poznámka
+          // ── Poznámka ──────────────────────────────────────────────────────
           TextField(
             controller: _noteController,
             decoration: const InputDecoration(
@@ -368,8 +447,7 @@ class _MyReservationsTab extends ConsumerWidget {
           itemCount: reservations.length,
           itemBuilder: (context, index) {
             final r = reservations[index];
-            final canDelete =
-                r.residentId == currentUserId || isManager;
+            final canDelete = r.residentId == currentUserId || isManager;
             return Card(
               margin: const EdgeInsets.only(bottom: 10),
               child: Padding(
@@ -398,16 +476,22 @@ class _MyReservationsTab extends ConsumerWidget {
                                 builder: (ctx) => AlertDialog(
                                   title: const Text('Zrušiť rezerváciu'),
                                   content: Text(
-                                    'Naozaj chcete zrušiť rezerváciu na ${r.amenityName} ${_dateFormat.format(r.date)} ${r.timeFrom}–${r.timeTo}?',
+                                    'Naozaj chcete zrušiť rezerváciu na '
+                                    '${r.amenityName} '
+                                    '${_dateFormat.format(r.date)} '
+                                    '${r.timeFrom}–${r.timeTo}?',
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.of(ctx).pop(false),
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(false),
                                       child: const Text('Nie'),
                                     ),
                                     ElevatedButton(
-                                      onPressed: () => Navigator.of(ctx).pop(true),
-                                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                                      onPressed: () =>
+                                          Navigator.of(ctx).pop(true),
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors.error),
                                       child: const Text('Zrušiť'),
                                     ),
                                   ],
@@ -442,8 +526,7 @@ class _MyReservationsTab extends ConsumerWidget {
                         Text(
                           _dateFormat.format(r.date),
                           style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary),
+                              fontSize: 13, color: AppColors.textSecondary),
                         ),
                         const SizedBox(width: 16),
                         const Icon(Icons.access_time,
@@ -452,8 +535,7 @@ class _MyReservationsTab extends ConsumerWidget {
                         Text(
                           '${r.timeFrom} – ${r.timeTo}',
                           style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary),
+                              fontSize: 13, color: AppColors.textSecondary),
                         ),
                       ],
                     ),
@@ -467,8 +549,7 @@ class _MyReservationsTab extends ConsumerWidget {
                           Text(
                             r.residentName!,
                             style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary),
+                                fontSize: 13, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -478,8 +559,7 @@ class _MyReservationsTab extends ConsumerWidget {
                       Text(
                         r.note!,
                         style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary),
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ],
@@ -509,8 +589,8 @@ class _ManageAmenitiesTab extends ConsumerWidget {
         onPressed: () => _showAddAmenityDialog(context, ref),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label:
-            const Text('Pridať priestor', style: TextStyle(color: Colors.white)),
+        label: const Text('Pridať priestor',
+            style: TextStyle(color: Colors.white)),
       ),
       body: amenitiesAsync.when(
         data: (amenities) {
@@ -531,9 +611,8 @@ class _ManageAmenitiesTab extends ConsumerWidget {
                   leading: const Icon(Icons.meeting_room_outlined,
                       color: AppColors.primary),
                   title: Text(a.name),
-                  subtitle: a.description != null
-                      ? Text(a.description!)
-                      : null,
+                  subtitle:
+                      a.description != null ? Text(a.description!) : null,
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline,
                         color: AppColors.error),
@@ -543,7 +622,8 @@ class _ManageAmenitiesTab extends ConsumerWidget {
                         builder: (ctx) => AlertDialog(
                           title: const Text('Odstrániť priestor'),
                           content: Text(
-                            'Naozaj chcete odstrániť priestor „${a.name}“? Odstránia sa aj všetky jeho rezervácie.',
+                            'Naozaj chcete odstrániť priestor „${a.name}"? '
+                            'Odstránia sa aj všetky jeho rezervácie.',
                           ),
                           actions: [
                             TextButton(
@@ -552,7 +632,8 @@ class _ManageAmenitiesTab extends ConsumerWidget {
                             ),
                             ElevatedButton(
                               onPressed: () => Navigator.of(ctx).pop(true),
-                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.error),
                               child: const Text('Odstrániť'),
                             ),
                           ],
@@ -627,9 +708,7 @@ class _ManageAmenitiesTab extends ConsumerWidget {
               Navigator.of(ctx).pop();
               final profile = await ref.read(profileProvider.future);
               if (profile?.buildingId == null) return;
-              await ref
-                  .read(reservationRepositoryProvider)
-                  .createAmenity(
+              await ref.read(reservationRepositoryProvider).createAmenity(
                     name: nameController.text.trim(),
                     description: descController.text.trim().isEmpty
                         ? null

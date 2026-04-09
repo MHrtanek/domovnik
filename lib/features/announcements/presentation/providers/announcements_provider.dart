@@ -14,15 +14,10 @@ final announcementsProvider =
 });
 
 final buildingAnnouncementsProvider =
-    StreamProvider<List<AnnouncementModel>>((ref) async* {
-  final profile = await ref.watch(profileProvider.future);
-  if (profile?.buildingId == null) {
-    yield [];
-    return;
-  }
-  yield* ref
-      .watch(announcementRepositoryProvider)
-      .getAnnouncements(profile!.buildingId!);
+    StreamProvider<List<AnnouncementModel>>((ref) {
+  final profile = ref.watch(profileProvider).valueOrNull;
+  if (profile?.buildingId == null) return const Stream.empty();
+  return ref.read(announcementRepositoryProvider).getAnnouncements(profile!.buildingId!);
 });
 
 class CreateAnnouncementNotifier extends AsyncNotifier<void> {

@@ -10,38 +10,25 @@ final ticketRepositoryProvider = Provider<TicketRepository>((ref) {
   return TicketRepository(ref.watch(supabaseClientProvider));
 });
 
-// Stream of all tickets for the building (manager view)
 final buildingTicketsProvider =
     StreamProvider.family<List<TicketModel>, String>((ref, buildingId) {
   return ref.watch(ticketRepositoryProvider).getTickets(buildingId);
 });
 
-// Stream of current user's tickets (resident view)
 final myTicketsProvider =
     StreamProvider.family<List<TicketModel>, String>((ref, userId) {
   return ref.watch(ticketRepositoryProvider).getMyTickets(userId);
 });
 
-// Unified tickets provider that picks the right stream based on role
-final ticketsProvider = StreamProvider<List<TicketModel>>((ref) async* {
-  final profile = await ref.watch(profileProvider.future);
-  if (profile == null) {
-    yield [];
-    return;
-  }
-
+final ticketsProvider = StreamProvider<List<TicketModel>>((ref) {
+  final profile = ref.watch(profileProvider).valueOrNull;
+  if (profile == null) return const Stream.empty();
   if (profile.isManager && profile.buildingId != null) {
-    yield* ref
-        .watch(ticketRepositoryProvider)
-        .getTickets(profile.buildingId!);
-  } else {
-    yield* ref
-        .watch(ticketRepositoryProvider)
-        .getMyTickets(profile.id);
+    return ref.read(ticketRepositoryProvider).getTickets(profile.buildingId!);
   }
+  return ref.read(ticketRepositoryProvider).getMyTickets(profile.id);
 });
 
-// Filter state
 enum TicketFilterStatus { all, prijate, vRieseni, ukoncene }
 
 final ticketFilterProvider =
@@ -59,9 +46,7 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketModel>>>((ref) {
         TicketFilterStatus.vRieseni: TicketStatus.vRieseni,
         TicketFilterStatus.ukoncene: TicketStatus.ukoncene,
       };
-      final filtered =
-          list.where((t) => t.status == statusMap[filter]).toList();
-      return AsyncData(filtered);
+      return AsyncData(list.where((t) => t.status == statusMap[filter]).toList());
     },
     loading: () => const AsyncLoading(),
     error: (e, st) => AsyncError(e, st),
@@ -76,6 +61,10 @@ class CreateTicketNotifier extends AsyncNotifier<void> {
     required String title,
     String? description,
     required TicketCategory category,
+    // Nové: viacero fotiek
+    List<XFile>? photos,
+    List<Uint8List>? photosBytes,
+    // Legacy (zachovaná kompatibilita)
     XFile? photoFile,
     Uint8List? photoBytes,
   }) async {
@@ -86,20 +75,28 @@ class CreateTicketNotifier extends AsyncNotifier<void> {
       if (profile.buildingId == null) throw Exception('Nemáte priradenú budovu');
 
       final repo = ref.read(ticketRepositoryProvider);
-      String? photoUrl;
 
-      if (photoFile != null && photoBytes != null) {
-        photoUrl = await repo.uploadTicketPhoto(photoFile, photoBytes);
-      }
-
-      await repo.createTicket(
+      // Vytvor tiket (bez fotky - pridáme cez ticket_photos)
+      final ticket = await repo.createTicket(
         title: title,
         description: description,
         category: category,
         createdBy: profile.id,
         buildingId: profile.buildingId!,
-        photoUrl: photoUrl,
       );
+
+      // Nahraj viacero fotiek
+      final allPhotos = photos ?? (photoFile != null ? [photoFile] : []);
+      final allBytes = photosBytes ?? (photoBytes != null ? [photoBytes] : []);
+
+      for (int i = 0; i < allPhotos.length && i < allBytes.length; i++) {
+        try {
+          final url = await repo.uploadTicketPhoto(allPhotos[i], allBytes[i]);
+          await repo.addTicketPhoto(ticket.id, url);
+        } catch (e) {
+          debugPrint('Failed to upload photo $i: $e');
+        }
+      }
     });
   }
 }
@@ -117,7 +114,6 @@ class UpdateTicketStatusNotifier extends AsyncNotifier<void> {
       await ref
           .read(ticketRepositoryProvider)
           .updateTicketStatus(ticketId: ticketId, status: status);
-      // Invalidate so the detail screen and list both reflect the new status
       ref.invalidate(ticketDetailProvider(ticketId));
       ref.invalidate(ticketsProvider);
     });
@@ -128,7 +124,6 @@ final updateTicketStatusProvider =
     AsyncNotifierProvider<UpdateTicketStatusNotifier, void>(
         UpdateTicketStatusNotifier.new);
 
-// Top-level ticket detail provider – can be invalidated after status updates
 final ticketDetailProvider =
     FutureProvider.family<TicketModel?, String>((ref, ticketId) async {
   return ref.read(ticketRepositoryProvider).getTicket(ticketId);

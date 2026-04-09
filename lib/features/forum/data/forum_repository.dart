@@ -20,17 +20,24 @@ class ForumRepository {
             try {
               final profile = await _client
                   .from('profiles')
-                  .select('full_name')
+                  .select('full_name, email')
                   .eq('id', map['created_by'] as String)
                   .maybeSingle();
-              map['profiles'] = profile;
-
+              if (profile != null) {
+                map['profiles'] = {
+                  'full_name': (profile['full_name'] as String?)?.isNotEmpty == true
+                      ? profile['full_name']
+                      : profile['email'],
+                };
+              }
               final replyCount = await _client
                   .from('forum_replies')
                   .select('id')
                   .eq('post_id', map['id'] as String);
               map['reply_count'] = (replyCount as List).length;
-            } catch (_) {}
+            } catch (e) {
+              debugPrint('ForumRepository.getPosts profile fetch error: $e');
+            }
             posts.add(ForumPostModel.fromJson(map));
           }
           return posts;
@@ -50,11 +57,19 @@ class ForumRepository {
             try {
               final profile = await _client
                   .from('profiles')
-                  .select('full_name')
+                  .select('full_name, email')
                   .eq('id', map['created_by'] as String)
                   .maybeSingle();
-              map['profiles'] = profile;
-            } catch (_) {}
+              if (profile != null) {
+                map['profiles'] = {
+                  'full_name': (profile['full_name'] as String?)?.isNotEmpty == true
+                      ? profile['full_name']
+                      : profile['email'],
+                };
+              }
+            } catch (e) {
+              debugPrint('ForumRepository.getReplies profile fetch error: $e');
+            }
             replies.add(ForumReplyModel.fromJson(map));
           }
           return replies;
@@ -78,7 +93,7 @@ class ForumRepository {
           })
           .select()
           .single();
-      return ForumPostModel.fromJson(response as Map<String, dynamic>);
+      return ForumPostModel.fromJson(response);
     } catch (e) {
       debugPrint('ForumRepository.createPost error: $e');
       rethrow;
@@ -104,35 +119,6 @@ class ForumRepository {
     }
   }
 
-  Future<void> deletePost(String postId) async {
-    try {
-      await _client.from('forum_posts').delete().eq('id', postId);
-    } catch (e) {
-      debugPrint('ForumRepository.deletePost error: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> updatePost({required String id, required String title, required String content}) async {
-    try {
-      await _client.from('forum_posts').update({'title': title, 'content': content}).eq('id', id);
-    } catch (e) {
-      debugPrint('ForumRepository.updatePost error: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> deleteReply(String replyId) async {
-    try {
-      await _client.from('forum_replies').delete().eq('id', replyId);
-    } catch (e) {
-      debugPrint('ForumRepository.deleteReply error: $e');
-      rethrow;
-    }
-  }
-}
-
-extension ForumRepositoryUpdate on ForumRepository {
   Future<void> updatePost({
     required String id,
     required String title,
@@ -145,6 +131,24 @@ extension ForumRepositoryUpdate on ForumRepository {
       }).eq('id', id);
     } catch (e) {
       debugPrint('ForumRepository.updatePost error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deletePost(String postId) async {
+    try {
+      await _client.from('forum_posts').delete().eq('id', postId);
+    } catch (e) {
+      debugPrint('ForumRepository.deletePost error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteReply(String replyId) async {
+    try {
+      await _client.from('forum_replies').delete().eq('id', replyId);
+    } catch (e) {
+      debugPrint('ForumRepository.deleteReply error: $e');
       rethrow;
     }
   }

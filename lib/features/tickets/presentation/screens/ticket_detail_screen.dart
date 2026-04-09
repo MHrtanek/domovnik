@@ -41,10 +41,7 @@ class _TicketDetailBody extends ConsumerStatefulWidget {
   final TicketModel ticket;
   final AsyncValue<dynamic> profileAsync;
 
-  const _TicketDetailBody({
-    required this.ticket,
-    required this.profileAsync,
-  });
+  const _TicketDetailBody({required this.ticket, required this.profileAsync});
 
   @override
   ConsumerState<_TicketDetailBody> createState() => _TicketDetailBodyState();
@@ -63,12 +60,10 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
   Future<void> _updateStatus() async {
     if (_selectedStatus == widget.ticket.status) return;
     setState(() => _updating = true);
-
     try {
       await ref
           .read(updateTicketStatusProvider.notifier)
           .updateStatus(widget.ticket.id, _selectedStatus);
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -80,10 +75,7 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Chyba: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('Chyba: ${e.toString()}'), backgroundColor: AppColors.error),
         );
         setState(() => _selectedStatus = widget.ticket.status);
       }
@@ -92,12 +84,22 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
     }
   }
 
+  void _showPhotoFullscreen(BuildContext context, List<String> urls, int initialIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _PhotoGalleryScreen(urls: urls, initialIndex: initialIndex),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isManager = widget.profileAsync.maybeWhen(
       data: (profile) => profile?.isManager ?? false,
       orElse: () => false,
     );
+
+    final photos = widget.ticket.allPhotoUrls;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -115,10 +117,7 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(
-                          widget.ticket.title,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
+                        child: Text(widget.ticket.title, style: Theme.of(context).textTheme.headlineSmall),
                       ),
                       const SizedBox(width: 8),
                       StatusBadge(status: widget.ticket.status),
@@ -127,6 +126,11 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                   const SizedBox(height: 8),
                   CategoryChip(category: widget.ticket.category),
                   const SizedBox(height: 12),
+                  _DetailRow(
+                    icon: Icons.person_outline,
+                    label: 'Vytvoril',
+                    value: widget.ticket.createdByName ?? 'Neznámy',
+                  ),
                   _DetailRow(
                     icon: Icons.calendar_today_outlined,
                     label: 'Vytvorené',
@@ -144,26 +148,16 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
           const SizedBox(height: 12),
 
           // Description
-          if (widget.ticket.description != null &&
-              widget.ticket.description!.isNotEmpty) ...[
+          if (widget.ticket.description != null && widget.ticket.description!.isNotEmpty) ...[
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Popis',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    const Text('Popis', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                     const SizedBox(height: 8),
-                    Text(
-                      widget.ticket.description!,
-                      style: const TextStyle(fontSize: 15),
-                    ),
+                    Text(widget.ticket.description!, style: const TextStyle(fontSize: 15)),
                   ],
                 ),
               ),
@@ -171,36 +165,50 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
             const SizedBox(height: 12),
           ],
 
-          // Photo
-          if (widget.ticket.photoUrl != null) ...[
+          // ── Fotografie ────────────────────────────────────────────────
+          if (photos.isNotEmpty) ...[
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Text(
-                        'Fotografia',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
+                    Text(
+                      'Fotografie (${photos.length})',
+                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                     ),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: CachedNetworkImage(
-                        imageUrl: widget.ticket.photoUrl!,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => const SizedBox(
-                          height: 200,
-                          child: LoadingWidget(),
-                        ),
-                        errorWidget: (_, __, ___) => const Icon(Icons.error),
+                    const SizedBox(height: 12),
+                    // Grid fotiek - max 3 v rade
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 1,
                       ),
+                      itemCount: photos.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () => _showPhotoFullscreen(context, photos, index),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: CachedNetworkImage(
+                              imageUrl: photos[index],
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: AppColors.surface,
+                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
+                                color: AppColors.surface,
+                                child: const Icon(Icons.broken_image_outlined, color: AppColors.textSecondary),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -209,20 +217,14 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
             const SizedBox(height: 12),
           ],
 
-          // Status timeline
+          // Timeline
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Priebeh riešenia',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  const Text('Priebeh riešenia', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 12),
                   _TimelineStep(
                     label: 'Prijaté',
@@ -259,13 +261,7 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Zmeniť stav tiketu',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    const Text('Zmeniť stav tiketu', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<TicketStatus>(
                       value: _selectedStatus,
@@ -274,26 +270,15 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                         prefixIcon: Icon(Icons.edit_outlined),
                       ),
                       items: TicketStatus.values
-                          .map((s) => DropdownMenuItem(
-                                value: s,
-                                child: Text(s.label),
-                              ))
+                          .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
                           .toList(),
-                      onChanged: (v) =>
-                          setState(() => _selectedStatus = v!),
+                      onChanged: (v) => setState(() => _selectedStatus = v!),
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: _updating ? null : _updateStatus,
                       child: _updating
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                           : const Text('Aktualizovať stav'),
                     ),
                   ],
@@ -307,16 +292,73 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
   }
 }
 
+// ── Fullscreen galéria ───────────────────────────────────────────────────────
+
+class _PhotoGalleryScreen extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+
+  const _PhotoGalleryScreen({required this.urls, required this.initialIndex});
+
+  @override
+  State<_PhotoGalleryScreen> createState() => _PhotoGalleryScreenState();
+}
+
+class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text('${_currentIndex + 1} / ${widget.urls.length}'),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _currentIndex = i),
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            child: Center(
+              child: CachedNetworkImage(
+                imageUrl: widget.urls[index],
+                fit: BoxFit.contain,
+                placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+                errorWidget: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.white, size: 48),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 class _DetailRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
 
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -326,19 +368,9 @@ class _DetailRow extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: AppColors.textSecondary),
           const SizedBox(width: 6),
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
+          Text('$label: ', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -369,11 +401,7 @@ class _TimelineStep extends StatelessWidget {
       children: [
         Column(
           children: [
-            Icon(
-              icon,
-              color: active ? color : AppColors.textDisabled,
-              size: 24,
-            ),
+            Icon(icon, color: active ? color : AppColors.textDisabled, size: 24),
             if (!isLast)
               Container(
                 width: 2,
@@ -395,13 +423,7 @@ class _TimelineStep extends StatelessWidget {
                 ),
               ),
               if (date != null)
-                Text(
-                  date!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
+                Text(date!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             ],
           ),
         ),

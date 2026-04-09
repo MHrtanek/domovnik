@@ -16,24 +16,44 @@ class ProfileRepository {
           .maybeSingle();
 
       if (response == null) return null;
-      return ProfileModel.fromJson(response as Map<String, dynamic>);
+      return ProfileModel.fromJson(response);
     } catch (e) {
       debugPrint('ProfileRepository.getProfile error: $e');
       rethrow;
     }
   }
 
-  /// Called when a profile row doesn't exist yet for an authenticated user.
-  ///
-  /// This happens when:
-  ///   - Email confirmation is enabled and the trigger ran before confirmation
-  ///     but the profile INSERT failed silently, OR
-  ///   - The user confirmed their email and now has a session but the trigger
-  ///     never fired.
-  ///
-  /// We read the registration metadata from the user's JWT
-  /// (stored in raw_user_meta_data via signUp(data:{})) and call
-  /// handle_user_signup() which is SECURITY DEFINER and works with a session.
+  Future<List<ProfileModel>> getResidents(String buildingId) async {
+    try {
+      final response = await _client
+          .from('profiles')
+          .select()
+          .eq('building_id', buildingId)
+          .eq('role', 'resident')
+          .order('full_name');
+      return (response as List).map((r) => ProfileModel.fromJson(r)).toList();
+    } catch (e) {
+      debugPrint('ProfileRepository.getResidents error: $e');
+      rethrow;
+    }
+  }
+
+  Future<ProfileModel?> getManagerForBuilding(String buildingId) async {
+    try {
+      final response = await _client
+          .from('profiles')
+          .select()
+          .eq('building_id', buildingId)
+          .eq('role', 'manager')
+          .maybeSingle();
+      if (response == null) return null;
+      return ProfileModel.fromJson(response);
+    } catch (e) {
+      debugPrint('ProfileRepository.getManagerForBuilding error: $e');
+      return null;
+    }
+  }
+
   Future<ProfileModel?> bootstrapProfile(User user) async {
     final meta = user.userMetadata ?? {};
     final role = meta['role'] as String? ?? 'resident';
@@ -41,11 +61,6 @@ class ProfileRepository {
     final buildingId = meta['building_id'] as String?;
     final buildingName = meta['building_name'] as String?;
     final buildingAddress = meta['building_address'] as String?;
-
-    debugPrint(
-      'ProfileRepository.bootstrapProfile: user=${user.id} role=$role '
-      'meta=$meta',
-    );
 
     try {
       await _client.rpc('handle_user_signup', params: {
@@ -56,13 +71,10 @@ class ProfileRepository {
         'p_building_name': buildingName,
         'p_building_address': buildingAddress,
       });
-      debugPrint('ProfileRepository.bootstrapProfile: RPC succeeded');
     } catch (e) {
       debugPrint('ProfileRepository.bootstrapProfile: RPC error: $e');
-      // Don't rethrow — fall through and try to read whatever was created
     }
 
-    // Read back the (hopefully now-existing) profile
     return getProfile(user.id);
   }
 
@@ -70,11 +82,13 @@ class ProfileRepository {
     required String userId,
     String? fullName,
     String? flatNumber,
+    String? phone,
   }) async {
     try {
       final updates = <String, dynamic>{};
       if (fullName != null) updates['full_name'] = fullName;
       if (flatNumber != null) updates['flat_number'] = flatNumber;
+      updates['phone'] = phone; // môže byť null (vymazanie)
 
       final response = await _client
           .from('profiles')
@@ -83,7 +97,7 @@ class ProfileRepository {
           .select()
           .single();
 
-      return ProfileModel.fromJson(response as Map<String, dynamic>);
+      return ProfileModel.fromJson(response);
     } catch (e) {
       debugPrint('ProfileRepository.updateProfile error: $e');
       rethrow;

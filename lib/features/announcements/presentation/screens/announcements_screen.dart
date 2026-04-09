@@ -24,9 +24,10 @@ class AnnouncementsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: const DomovnikAppBar(
+      appBar: DomovnikAppBar(
         title: 'Oznamy',
         showBack: false,
+        showLogout: true,
       ),
       floatingActionButton: isManager
           ? FloatingActionButton.extended(
@@ -115,6 +116,7 @@ class AnnouncementsScreen extends ConsumerWidget {
     if (confirmed == true) {
       try {
         await ref.read(createAnnouncementProvider.notifier).deleteAnnouncement(announcement.id);
+        ref.invalidate(buildingAnnouncementsProvider);
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

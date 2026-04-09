@@ -25,6 +25,7 @@ class TicketsListScreen extends ConsumerWidget {
       appBar: DomovnikAppBar(
         title: 'Tikety',
         showBack: false,
+        showLogout: true,
       ),
       floatingActionButton: profileAsync.maybeWhen(
         data: (profile) => profile?.isResident == true

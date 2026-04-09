@@ -15,7 +15,7 @@ class AnnouncementRepository {
         .eq('building_id', buildingId)
         .order('created_at', ascending: false)
         .map((rows) => rows
-            .map((r) => AnnouncementModel.fromJson(r as Map<String, dynamic>))
+            .map((r) => AnnouncementModel.fromJson(r))
             .toList());
   }
 
@@ -39,7 +39,7 @@ class AnnouncementRepository {
           .select()
           .single();
 
-      return AnnouncementModel.fromJson(response as Map<String, dynamic>);
+      return AnnouncementModel.fromJson(response);
     } catch (e) {
       debugPrint('AnnouncementRepository.createAnnouncement error: $e');
       rethrow;

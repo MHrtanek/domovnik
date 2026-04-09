@@ -16,7 +16,7 @@ class BuildingRepository {
           .maybeSingle();
 
       if (response == null) return null;
-      return BuildingModel.fromJson(response as Map<String, dynamic>);
+      return BuildingModel.fromJson(response);
     } catch (e) {
       debugPrint('BuildingRepository.getBuilding error: $e');
       rethrow;
@@ -50,7 +50,7 @@ class BuildingRepository {
           .select()
           .single();
 
-      return BuildingModel.fromJson(response as Map<String, dynamic>);
+      return BuildingModel.fromJson(response);
     } catch (e) {
       debugPrint('BuildingRepository.createBuilding error: $e');
       rethrow;
@@ -74,7 +74,7 @@ class BuildingRepository {
           .select()
           .single();
 
-      return BuildingModel.fromJson(response as Map<String, dynamic>);
+      return BuildingModel.fromJson(response);
     } catch (e) {
       debugPrint('BuildingRepository.updateBuilding error: $e');
       rethrow;

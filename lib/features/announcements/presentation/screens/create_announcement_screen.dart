@@ -130,7 +130,7 @@ class _CreateAnnouncementScreenState
                       color: _isUrgent ? AppColors.accent : AppColors.textDisabled,
                     ),
                     value: _isUrgent,
-                    activeColor: AppColors.accent,
+                    activeThumbColor: AppColors.accent,
                     onChanged: (v) => setState(() => _isUrgent = v),
                   ),
                 ),

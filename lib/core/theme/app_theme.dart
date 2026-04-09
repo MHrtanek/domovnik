@@ -11,7 +11,6 @@ abstract class AppTheme {
       tertiary: AppColors.accent,
       error: AppColors.error,
       surface: AppColors.surface,
-      background: AppColors.background,
     );
 
     return ThemeData(
@@ -119,6 +118,13 @@ abstract class AppTheme {
         unselectedItemColor: AppColors.textSecondary,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
+      ),
+
+      // Dialog - väčší na PC, normálny na mobile
+      dialogTheme: DialogThemeData(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        constraints: const BoxConstraints(minWidth: 500, maxWidth: 800),
       ),
 
       // Divider

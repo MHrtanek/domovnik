@@ -35,6 +35,7 @@ class ProfileNotifier extends AsyncNotifier<ProfileModel?> {
   Future<void> updateProfile({
     String? fullName,
     String? flatNumber,
+    String? phone,
   }) async {
     final user = ref.read(currentUserProvider);
     if (user == null) return;
@@ -45,6 +46,7 @@ class ProfileNotifier extends AsyncNotifier<ProfileModel?> {
             userId: user.id,
             fullName: fullName,
             flatNumber: flatNumber,
+            phone: phone,
           );
     });
   }

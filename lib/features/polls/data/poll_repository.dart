@@ -17,7 +17,7 @@ class PollRepository {
         .asyncMap((rows) async {
           final polls = <PollModel>[];
           for (final row in rows) {
-            final poll = PollModel.fromJson(row as Map<String, dynamic>);
+            final poll = PollModel.fromJson(row);
             final enriched = await _enrichPoll(poll);
             polls.add(enriched);
           }
@@ -94,7 +94,7 @@ class PollRepository {
           .select()
           .single();
 
-      final poll = PollModel.fromJson(pollResponse as Map<String, dynamic>);
+      final poll = PollModel.fromJson(pollResponse);
 
       // Insert options
       final optionsData = optionTexts
@@ -140,7 +140,7 @@ class PollRepository {
           .maybeSingle();
 
       if (pollResponse == null) return null;
-      final poll = PollModel.fromJson(pollResponse as Map<String, dynamic>);
+      final poll = PollModel.fromJson(pollResponse);
       return await _enrichPoll(poll);
     } catch (e) {
       debugPrint('PollRepository.getPollResults error: $e');

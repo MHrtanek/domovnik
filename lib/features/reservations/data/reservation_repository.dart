@@ -16,7 +16,7 @@ class ReservationRepository {
         .map((rows) {
           final seen = <String>{};
           return rows
-              .map((r) => AmenityModel.fromJson(r as Map<String, dynamic>))
+              .map((r) => AmenityModel.fromJson(r))
               .where((a) => a.isActive && seen.add(a.id))
               .toList();
         });

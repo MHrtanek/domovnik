@@ -38,7 +38,8 @@ class TicketModel {
   final String? description;
   final TicketCategory category;
   final TicketStatus status;
-  final String? photoUrl;
+  final String? photoUrl; // legacy
+  final List<String> photoUrls; // nové - viacero fotiek
   final String createdBy;
   final String? createdByName;
   final String buildingId;
@@ -52,6 +53,7 @@ class TicketModel {
     required this.category,
     required this.status,
     this.photoUrl,
+    this.photoUrls = const [],
     required this.createdBy,
     this.createdByName,
     required this.buildingId,
@@ -59,12 +61,33 @@ class TicketModel {
     required this.updatedAt,
   });
 
+  // Všetky fotky - kombinuje legacy photoUrl + nové photoUrls
+  List<String> get allPhotoUrls {
+    final all = <String>[];
+    if (photoUrls.isNotEmpty) {
+      all.addAll(photoUrls);
+    } else if (photoUrl != null) {
+      all.add(photoUrl!);
+    }
+    return all;
+  }
+
   factory TicketModel.fromJson(Map<String, dynamic> json) {
-    // Support joined profiles data: profiles: { full_name: '...' }
     String? createdByName;
     final profiles = json['profiles'];
     if (profiles is Map<String, dynamic>) {
       createdByName = profiles['full_name'] as String?;
+    }
+
+    // Načítaj viacero fotiek z ticket_photos
+    final List<String> photoUrls = [];
+    final ticketPhotos = json['ticket_photos'];
+    if (ticketPhotos is List) {
+      for (final p in ticketPhotos) {
+        if (p is Map<String, dynamic> && p['photo_url'] != null) {
+          photoUrls.add(p['photo_url'] as String);
+        }
+      }
     }
 
     return TicketModel(
@@ -74,6 +97,7 @@ class TicketModel {
       category: TicketCategory.fromString(json['category'] as String),
       status: TicketStatus.fromString(json['status'] as String),
       photoUrl: json['photo_url'] as String?,
+      photoUrls: photoUrls,
       createdBy: json['created_by'] as String,
       createdByName: createdByName,
       buildingId: json['building_id'] as String,
@@ -104,6 +128,7 @@ class TicketModel {
     TicketCategory? category,
     TicketStatus? status,
     String? photoUrl,
+    List<String>? photoUrls,
     String? createdBy,
     String? createdByName,
     String? buildingId,
@@ -117,6 +142,7 @@ class TicketModel {
       category: category ?? this.category,
       status: status ?? this.status,
       photoUrl: photoUrl ?? this.photoUrl,
+      photoUrls: photoUrls ?? this.photoUrls,
       createdBy: createdBy ?? this.createdBy,
       createdByName: createdByName ?? this.createdByName,
       buildingId: buildingId ?? this.buildingId,

@@ -108,7 +108,7 @@ class ForumScreen extends ConsumerWidget {
               Navigator.of(ctx).pop();
               if (isEdit) {
                 await ref.read(forumRepositoryProvider).updatePost(
-                  id: existing!.id,
+                  id: existing.id,
                   title: titleController.text.trim(),
                   content: contentController.text.trim(),
                 );
@@ -130,10 +130,7 @@ class ForumScreen extends ConsumerWidget {
   void _openPost(BuildContext context, WidgetRef ref, ForumPostModel post) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ProviderScope(
-          parent: ProviderScope.containerOf(context),
-          child: ForumPostDetailScreen(post: post),
-        ),
+        builder: (_) => ForumPostDetailScreen(post: post),
       ),
     );
   }
@@ -296,6 +293,7 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                                     if (confirmed != true) return;
                                     try {
                                       await ref.read(forumRepositoryProvider).deletePost(widget.post.id);
+                                      ref.invalidate(forumPostsProvider);
                                       if (context.mounted) Navigator.of(context).pop();
                                     } catch (e) {
                                       if (context.mounted) {

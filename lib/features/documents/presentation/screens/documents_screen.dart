@@ -1,5 +1,4 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -89,6 +88,8 @@ class DocumentsScreen extends ConsumerWidget {
       return;
     }
 
+    if (!context.mounted) return;
+
     // Ask for display name
     final nameController =
         TextEditingController(text: file.name.replaceAll(RegExp(r'\.\w+$'), ''));
@@ -168,6 +169,7 @@ class DocumentsScreen extends ConsumerWidget {
     if (confirmed == true) {
       try {
         await ref.read(deleteDocumentProvider.notifier).deleteDocument(doc);
+        ref.invalidate(documentsProvider);
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(

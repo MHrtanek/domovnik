@@ -27,6 +27,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _flatNumberController = TextEditingController();
+  final _phoneController = TextEditingController();
   bool _editing = false;
   bool _saving = false;
 
@@ -38,12 +39,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void dispose() {
     _fullNameController.dispose();
     _flatNumberController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
   void _startEditing(profile) {
     _fullNameController.text = profile.fullName ?? '';
     _flatNumberController.text = profile.flatNumber ?? '';
+    _phoneController.text = profile.phone ?? '';
     setState(() => _editing = true);
   }
 
@@ -56,6 +59,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             flatNumber: _flatNumberController.text.trim().isEmpty
                 ? null
                 : _flatNumberController.text.trim(),
+            phone: _phoneController.text.trim().isEmpty
+                ? null
+                : _phoneController.text.trim(),
           );
       if (mounted) setState(() => _editing = false);
     } catch (e) {
@@ -112,51 +118,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => ctx.pop(),
-              child: const Text('Zrušiť'),
-            ),
+            TextButton(onPressed: () => ctx.pop(), child: const Text('Zrušiť')),
             ElevatedButton(
-              onPressed: saving
-                  ? null
-                  : () async {
-                      final newPass = newPasswordController.text;
-                      final confirmPass = confirmPasswordController.text;
-
-                      if (newPass.length < 6) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Heslo musí mať aspoň 6 znakov'), backgroundColor: AppColors.error),
-                        );
-                        return;
-                      }
-                      if (newPass != confirmPass) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Heslá sa nezhodujú'), backgroundColor: AppColors.error),
-                        );
-                        return;
-                      }
-
-                      setDialogState(() => saving = true);
-                      try {
-                        await Supabase.instance.client.auth.updateUser(
-                          UserAttributes(password: newPass),
-                        );
-                        if (ctx.mounted) ctx.pop();
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Heslo bolo úspešne zmenené'), backgroundColor: AppColors.success),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Chyba: ${e.toString()}'), backgroundColor: AppColors.error),
-                          );
-                        }
-                      } finally {
-                        setDialogState(() => saving = false);
-                      }
-                    },
+              onPressed: saving ? null : () async {
+                final newPass = newPasswordController.text;
+                final confirmPass = confirmPasswordController.text;
+                if (newPass.length < 6) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Heslo musí mať aspoň 6 znakov'), backgroundColor: AppColors.error),
+                  );
+                  return;
+                }
+                if (newPass != confirmPass) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Heslá sa nezhodujú'), backgroundColor: AppColors.error),
+                  );
+                  return;
+                }
+                setDialogState(() => saving = true);
+                try {
+                  await Supabase.instance.client.auth.updateUser(UserAttributes(password: newPass));
+                  if (ctx.mounted) ctx.pop();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Heslo bolo úspešne zmenené'), backgroundColor: AppColors.success),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Chyba: ${e.toString()}'), backgroundColor: AppColors.error),
+                    );
+                  }
+                } finally {
+                  setDialogState(() => saving = false);
+                }
+              },
               child: saving
                   ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Zmeniť'),
@@ -234,8 +231,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       });
       setState(() => _codesLoaded = false);
       await _loadInviteCodes(buildingId);
+      await Clipboard.setData(ClipboardData(text: code));
       if (mounted) {
-        await Clipboard.setData(ClipboardData(text: code));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Kód $code vytvorený a skopírovaný!'), backgroundColor: AppColors.success),
         );
@@ -257,10 +254,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Nepodarilo sa odstraňovať kód'),
-            backgroundColor: AppColors.error,
-          ),
+          const SnackBar(content: Text('Nepodarilo sa odstraňovať kód'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -301,6 +295,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
+                // Avatar
                 CircleAvatar(
                   radius: 48,
                   backgroundColor: AppColors.primary,
@@ -328,15 +323,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Budova info
                 buildingAsync.when(
                   data: (building) => building != null
-                      ? _InfoCard(icon: Icons.apartment, title: 'Budova', value: '${building.name}\n${building.address}\n${ref.watch(residentsCountProvider(building.id)).maybeWhen(data: (c) => '$c obyvateľov', orElse: () => '')}')
+                      ? _InfoCard(
+                          icon: Icons.apartment,
+                          title: 'Budova',
+                          value: '${building.name}\n${building.address}\n${ref.watch(residentsCountProvider(building.id)).maybeWhen(data: (c) => '$c obyvateľov', orElse: () => '')}',
+                        )
                       : const SizedBox.shrink(),
                   loading: () => const LoadingWidget(),
                   error: (_, __) => const SizedBox.shrink(),
                 ),
                 const SizedBox(height: 12),
 
+                // Edit form alebo info karty
                 if (_editing)
                   Card(
                     child: Padding(
@@ -352,6 +353,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               controller: _fullNameController,
                               validator: Validators.fullName,
                               decoration: const InputDecoration(labelText: 'Meno a priezvisko', prefixIcon: Icon(Icons.badge_outlined)),
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: const InputDecoration(
+                                labelText: 'Telefónne číslo (nepovinné)',
+                                prefixIcon: Icon(Icons.phone_outlined),
+                                hintText: '+421 9xx xxx xxx',
+                              ),
                             ),
                             const SizedBox(height: 12),
                             if (profile.isResident) ...[
@@ -382,12 +393,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   )
                 else ...[
                   _InfoCard(icon: Icons.email_outlined, title: 'E-mail', value: profile.email),
+                  if (profile.phone != null && profile.phone!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _InfoCard(icon: Icons.phone_outlined, title: 'Telefón', value: profile.phone!),
+                  ],
                   if (profile.flatNumber != null) ...[
                     const SizedBox(height: 12),
                     _InfoCard(icon: Icons.door_front_door_outlined, title: 'Číslo bytu', value: profile.flatNumber!),
                   ],
                 ],
 
+                // Invite kódy pre správcu
                 if (profile.isManager) ...[
                   const SizedBox(height: 24),
                   buildingAsync.when(
@@ -495,7 +511,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-
                 OutlinedButton.icon(
                   onPressed: _signOut,
                   icon: const Icon(Icons.logout, color: AppColors.error),

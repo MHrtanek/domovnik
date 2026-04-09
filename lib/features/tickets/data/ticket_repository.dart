@@ -21,8 +21,7 @@ class TicketRepository {
         .map((rows) async {
           final List<TicketModel> tickets = [];
           for (final r in rows) {
-            final map = r as Map<String, dynamic>;
-            // Fetch author name separately
+            final map = r;
             try {
               final profile = await _client
                   .from('profiles')
@@ -30,6 +29,15 @@ class TicketRepository {
                   .eq('id', map['created_by'] as String)
                   .maybeSingle();
               map['profiles'] = profile;
+            } catch (_) {}
+            // Načítaj fotky
+            try {
+              final photos = await _client
+                  .from('ticket_photos')
+                  .select('photo_url')
+                  .eq('ticket_id', map['id'] as String)
+                  .order('created_at');
+              map['ticket_photos'] = photos;
             } catch (_) {}
             tickets.add(TicketModel.fromJson(map));
           }
@@ -47,7 +55,7 @@ class TicketRepository {
         .map((rows) async {
           final List<TicketModel> tickets = [];
           for (final r in rows) {
-            final map = r as Map<String, dynamic>;
+            final map = r;
             try {
               final profile = await _client
                   .from('profiles')
@@ -55,6 +63,14 @@ class TicketRepository {
                   .eq('id', map['created_by'] as String)
                   .maybeSingle();
               map['profiles'] = profile;
+            } catch (_) {}
+            try {
+              final photos = await _client
+                  .from('ticket_photos')
+                  .select('photo_url')
+                  .eq('ticket_id', map['id'] as String)
+                  .order('created_at');
+              map['ticket_photos'] = photos;
             } catch (_) {}
             tickets.add(TicketModel.fromJson(map));
           }
@@ -69,7 +85,7 @@ class TicketRepository {
     required TicketCategory category,
     required String createdBy,
     required String buildingId,
-    String? photoUrl,
+    String? photoUrl, // legacy - zachovaná kompatibilita
   }) async {
     try {
       final response = await _client
@@ -85,11 +101,18 @@ class TicketRepository {
           .select()
           .single();
 
-      return TicketModel.fromJson(response as Map<String, dynamic>);
+      return TicketModel.fromJson(response);
     } catch (e) {
       debugPrint('TicketRepository.createTicket error: $e');
       rethrow;
     }
+  }
+
+  Future<void> addTicketPhoto(String ticketId, String photoUrl) async {
+    await _client.from('ticket_photos').insert({
+      'ticket_id': ticketId,
+      'photo_url': photoUrl,
+    });
   }
 
   Future<TicketModel> updateTicketStatus({
@@ -104,7 +127,7 @@ class TicketRepository {
           .select()
           .single();
 
-      return TicketModel.fromJson(response as Map<String, dynamic>);
+      return TicketModel.fromJson(response);
     } catch (e) {
       debugPrint('TicketRepository.updateTicketStatus error: $e');
       rethrow;
@@ -128,8 +151,7 @@ class TicketRepository {
           );
 
       final supabaseUrl = (dotenv.env['SUPABASE_URL'] ?? '').replaceAll(RegExp(r'/$'), '');
-      final url = '$supabaseUrl/storage/v1/object/public/$bucket/$filePath';
-      return url;
+      return '$supabaseUrl/storage/v1/object/public/$bucket/$filePath';
     } catch (e) {
       debugPrint('TicketRepository.uploadTicketPhoto error: $e');
       rethrow;
@@ -162,7 +184,19 @@ class TicketRepository {
           .maybeSingle();
 
       if (response == null) return null;
-      return TicketModel.fromJson(response as Map<String, dynamic>);
+      final map = Map<String, dynamic>.from(response);
+
+      // Načítaj fotky
+      try {
+        final photos = await _client
+            .from('ticket_photos')
+            .select('photo_url')
+            .eq('ticket_id', ticketId)
+            .order('created_at');
+        map['ticket_photos'] = photos;
+      } catch (_) {}
+
+      return TicketModel.fromJson(map);
     } catch (e) {
       debugPrint('TicketRepository.getTicket error: $e');
       rethrow;

@@ -23,6 +23,7 @@ class PollsScreen extends ConsumerWidget {
       appBar: const DomovnikAppBar(
         title: 'Hlasovanie',
         showBack: false,
+        showLogout: true,
       ),
       floatingActionButton: profileAsync.maybeWhen(
         data: (profile) => profile?.isManager == true

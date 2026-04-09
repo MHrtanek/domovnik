@@ -8,13 +8,10 @@ final forumRepositoryProvider = Provider<ForumRepository>((ref) {
   return ForumRepository(ref.watch(supabaseClientProvider));
 });
 
-final forumPostsProvider = StreamProvider<List<ForumPostModel>>((ref) async* {
-  final profile = await ref.watch(profileProvider.future);
-  if (profile == null || profile.buildingId == null) {
-    yield [];
-    return;
-  }
-  yield* ref.watch(forumRepositoryProvider).getPosts(profile.buildingId!);
+final forumPostsProvider = StreamProvider<List<ForumPostModel>>((ref) {
+  final profile = ref.watch(profileProvider).valueOrNull;
+  if (profile == null || profile.buildingId == null) return const Stream.empty();
+  return ref.read(forumRepositoryProvider).getPosts(profile.buildingId!);
 });
 
 final forumRepliesProvider =
