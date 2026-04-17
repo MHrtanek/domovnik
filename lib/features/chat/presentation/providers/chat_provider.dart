@@ -90,52 +90,60 @@ class ConversationEntry {
   });
 }
 
-final conversationsProvider = FutureProvider<List<ConversationEntry>>((ref) async {
-  // Rebuild automatically when any message in the building changes
-  ref.watch(_buildingMessageCountProvider);
+final conversationsProvider = StreamProvider<List<ConversationEntry>>((ref) {
+  final profile = ref.watch(profileProvider).valueOrNull;
+  if (profile == null || profile.buildingId == null) return const Stream.empty();
 
-  final profile = await ref.watch(profileProvider.future);
-  if (profile == null || profile.buildingId == null) return [];
-
-  final chatRepo = ref.read(chatRepositoryProvider);
+  final buildingId = profile.buildingId!;
+  final chatRepo   = ref.read(chatRepositoryProvider);
   final profileRepo = ref.read(profileRepositoryProvider);
 
-  final List<ProfileModel> contacts;
-  if (profile.isManager) {
-    contacts = await profileRepo.getResidents(profile.buildingId!);
-  } else {
-    final manager = await profileRepo.getManagerForBuilding(profile.buildingId!);
-    contacts = manager != null ? [manager] : [];
-  }
+  // Realtime stream všetkých správ v budove – trigger pre prepočet konverzácií
+  final trigger = ref
+      .read(supabaseClientProvider)
+      .from('messages')
+      .stream(primaryKey: ['id'])
+      .eq('building_id', buildingId)
+      .map((rows) => rows.length);
 
-  final entries = <ConversationEntry>[];
-  for (final contact in contacts) {
-    final unread = await chatRepo.getUnreadCount(
-      buildingId: profile.buildingId!,
-      senderId: contact.id,
-      receiverId: profile.id,
-    );
-    final lastMsg = await chatRepo.getLastMessage(
-      buildingId: profile.buildingId!,
-      userId1: profile.id,
-      userId2: contact.id,
-    );
-    entries.add(ConversationEntry(
-      profile: contact,
-      unreadCount: unread,
-      lastMessage: lastMsg,
-    ));
-  }
-
-  // Zoraď: najnovšia konverzácia hore, potom abecedne
-  entries.sort((a, b) {
-    if (a.lastMessage == null && b.lastMessage == null) {
-      return (a.profile.fullName ?? '').compareTo(b.profile.fullName ?? '');
+  return trigger.asyncMap((_) async {
+    final List<ProfileModel> contacts;
+    if (profile.isManager) {
+      contacts = await profileRepo.getResidents(buildingId);
+    } else {
+      final manager = await profileRepo.getManagerForBuilding(buildingId);
+      contacts = manager != null ? [manager] : [];
     }
-    if (a.lastMessage == null) return 1;
-    if (b.lastMessage == null) return -1;
-    return b.lastMessage!.createdAt.compareTo(a.lastMessage!.createdAt);
-  });
 
-  return entries;
+    final entries = <ConversationEntry>[];
+    for (final contact in contacts) {
+      final unread = await chatRepo.getUnreadCount(
+        buildingId: buildingId,
+        senderId: contact.id,
+        receiverId: profile.id,
+      );
+      final lastMsg = await chatRepo.getLastMessage(
+        buildingId: buildingId,
+        userId1: profile.id,
+        userId2: contact.id,
+      );
+      entries.add(ConversationEntry(
+        profile: contact,
+        unreadCount: unread,
+        lastMessage: lastMsg,
+      ));
+    }
+
+    // Zoraď: najnovšia konverzácia hore, potom abecedne
+    entries.sort((a, b) {
+      if (a.lastMessage == null && b.lastMessage == null) {
+        return (a.profile.fullName ?? '').compareTo(b.profile.fullName ?? '');
+      }
+      if (a.lastMessage == null) return 1;
+      if (b.lastMessage == null) return -1;
+      return b.lastMessage!.createdAt.compareTo(a.lastMessage!.createdAt);
+    });
+
+    return entries;
+  });
 });

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
@@ -28,8 +27,8 @@ class ConversationsScreen extends ConsumerWidget {
         data: (profile) {
           if (profile == null) return const LoadingWidget();
           if (!profile.isManager) {
-            // Obyvateľ: priama karta pre správcu budovy
-            return _ResidentManagerCard(buildingId: profile.buildingId ?? '');
+            // Obyvateľ: záznam správcu z conversationsProvider
+            return const _ResidentManagerCard();
           }
           // Správca: zoznam konverzácií so všetkými obyvateľmi
           return const _ManagerConversationsList();
@@ -46,132 +45,39 @@ class ConversationsScreen extends ConsumerWidget {
 
 // ── Resident view ─────────────────────────────────────────────────────────────
 
-class _ResidentManagerCard extends StatefulWidget {
-  final String buildingId;
-
-  const _ResidentManagerCard({required this.buildingId});
-
-  @override
-  State<_ResidentManagerCard> createState() => _ResidentManagerCardState();
-}
-
-class _ResidentManagerCardState extends State<_ResidentManagerCard> {
-  Map<String, dynamic>? _manager;
-  bool _loading = true;
-  String? _error;
+/// Resident view: použije rovnaký conversationsProvider ako manažér.
+/// Pre rezidenta provider vráti práve jeden záznam – správcu budovy.
+class _ResidentManagerCard extends ConsumerWidget {
+  const _ResidentManagerCard();
 
   @override
-  void initState() {
-    super.initState();
-    _loadManager();
-  }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final conversationsAsync = ref.watch(conversationsProvider);
 
-  Future<void> _loadManager() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final result = await Supabase.instance.client
-          .rpc('get_building_manager', params: {'p_building_id': widget.buildingId});
-      // RPC môže vrátiť List alebo Map – normalizuj na Map?
-      Map<String, dynamic>? manager;
-      if (result is Map<String, dynamic>) {
-        manager = result;
-      } else if (result is List && result.isNotEmpty) {
-        manager = result.first as Map<String, dynamic>;
-      }
-      if (mounted) setState(() {
-        _manager = manager;
-        _loading = false;
-      });
-    } catch (e) {
-      if (mounted) setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_loading) return const LoadingWidget();
-
-    if (_error != null) {
-      return DomovnikErrorWidget(message: _error!, onRetry: _loadManager);
-    }
-
-    if (_manager == null) {
-      return const EmptyStateWidget(
-        icon: Icons.manage_accounts_outlined,
-        message: 'Správca budovy nenájdený',
-      );
-    }
-
-    final name = (_manager!['full_name'] as String?)?.isNotEmpty == true
-        ? _manager!['full_name'] as String
-        : 'Správca';
-    final managerId = _manager!['id'] as String;
-    final initials = name[0].toUpperCase();
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
-        ),
-        child: InkWell(
-          onTap: () => context.push('/chat/$managerId'),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                  child: Text(
-                    initials,
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Správca budovy · Napísať správu',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ),
+    return conversationsAsync.when(
+      data: (entries) {
+        if (entries.isEmpty) {
+          return const EmptyStateWidget(
+            icon: Icons.manage_accounts_outlined,
+            message: 'Správca budovy nenájdený',
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async => ref.invalidate(conversationsProvider),
+          child: ListView(
+            children: [
+              _ConversationTile(
+                entry: entries.first,
+                onTap: () => context.push('/chat/${entries.first.profile.id}'),
+              ),
+            ],
           ),
-        ),
+        );
+      },
+      loading: () => const LoadingWidget(),
+      error: (e, _) => DomovnikErrorWidget(
+        message: e.toString(),
+        onRetry: () => ref.invalidate(conversationsProvider),
       ),
     );
   }

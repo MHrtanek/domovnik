@@ -37,6 +37,11 @@ Path: `supabase/migrations/005_fix_trigger_and_disable_confirm.sql`
 - Restores handle_user_signup() as a real upsert-based fallback
 - Also attempts to set mailer_autoconfirm = true via SQL (same as Step 1)
 
+### 008_profiles_resident_read.sql
+Path: `supabase/migrations/008_profiles_resident_read.sql`
+- Adds RLS SELECT policy so residents can read profiles of other users in the same building
+- Fixes forum post authors showing as 'Neznámy' for residents
+
 ---
 
 ## Step 3 — Verify the trigger exists

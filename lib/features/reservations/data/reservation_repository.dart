@@ -129,9 +129,10 @@ class ReservationRepository {
           .eq('date', dateStr);
 
       final overlaps = (existingList as List<dynamic>).any((r) {
-        final existFrom = r['time_from'] as String;
-        final existTo = r['time_to'] as String;
-        // String HH:mm comparison works correctly for same-day slots
+        // Normalizuj na HH:MM – DB vracia HH:MM:SS, UI posiela HH:MM
+        String trim5(String t) => t.length > 5 ? t.substring(0, 5) : t;
+        final existFrom = trim5(r['time_from'] as String);
+        final existTo   = trim5(r['time_to']   as String);
         return timeFrom.compareTo(existTo) < 0 &&
             timeTo.compareTo(existFrom) > 0;
       });

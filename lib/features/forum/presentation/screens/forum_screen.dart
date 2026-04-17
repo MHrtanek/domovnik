@@ -336,6 +336,7 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                         onDelete: () async {
                           try {
                             await ref.read(forumRepositoryProvider).deleteReply(reply.id);
+                            ref.invalidate(forumRepliesProvider(widget.post.id));
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

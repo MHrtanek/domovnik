@@ -56,6 +56,10 @@ class ManagerDashboardScreen extends ConsumerWidget {
             ref.invalidate(profileProvider);
             ref.invalidate(currentBuildingProvider);
             ref.invalidate(inspectionsProvider);
+            final buildingId = profile?.buildingId;
+            if (buildingId != null) {
+              ref.invalidate(residentsCountProvider(buildingId));
+            }
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),

@@ -8,9 +8,20 @@ final forumRepositoryProvider = Provider<ForumRepository>((ref) {
   return ForumRepository(ref.watch(supabaseClientProvider));
 });
 
+/// Interný trigger: emituje počet odpovedí v budove.
+/// Keď sa zmení (pridanie/zmazanie odpovede), forumPostsProvider
+/// reštartuje stream a getPosts() re-fetchuje reply_count pre každý post.
+final _forumRepliesCountProvider = StreamProvider<int>((ref) {
+  final profile = ref.watch(profileProvider).valueOrNull;
+  if (profile == null || profile.buildingId == null) return const Stream.empty();
+  return ref.read(forumRepositoryProvider).getReplyCount(profile.buildingId!);
+});
+
 final forumPostsProvider = StreamProvider<List<ForumPostModel>>((ref) {
   final profile = ref.watch(profileProvider).valueOrNull;
   if (profile == null || profile.buildingId == null) return const Stream.empty();
+  // Sleduj zmeny odpovedí aby sa reply_count aktualizoval v zozname príspevkov
+  ref.watch(_forumRepliesCountProvider);
   return ref.read(forumRepositoryProvider).getPosts(profile.buildingId!);
 });
 

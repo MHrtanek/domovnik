@@ -44,6 +44,16 @@ class ForumRepository {
         });
   }
 
+  /// Stream počtu odpovedí v budove – slúži na triggering refresh reply_count
+  /// v getPosts keď sa pridá alebo zmaže odpoveď.
+  Stream<int> getReplyCount(String buildingId) {
+    return _client
+        .from('forum_replies')
+        .stream(primaryKey: ['id'])
+        .eq('building_id', buildingId)
+        .map((rows) => rows.length);
+  }
+
   Stream<List<ForumReplyModel>> getReplies(String postId) {
     return _client
         .from('forum_replies')

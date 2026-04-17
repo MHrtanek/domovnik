@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-final residentsCountProvider = FutureProvider.family<int, String>((ref, buildingId) async {
-  final response = await Supabase.instance.client
+final residentsCountProvider = StreamProvider.family<int, String>((ref, buildingId) {
+  return Supabase.instance.client
       .from('profiles')
-      .select()
+      .stream(primaryKey: ['id'])
       .eq('building_id', buildingId)
-      .eq('role', 'resident');
-  return (response as List).length;
+      .map((rows) => rows.where((r) => r['role'] == 'resident').length);
 });
