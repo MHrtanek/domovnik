@@ -40,7 +40,7 @@ begin
     return NEW;
   end if;
 
-  if v_role not in ('manager', 'resident') then
+  if v_role not in ('manager', 'resident', 'dodavatel') then
     v_role := 'resident';
   end if;
 
@@ -68,7 +68,7 @@ begin
     end if;
 
     insert into public.profiles (id, email, full_name, role, building_id)
-    values (NEW.id, coalesce(NEW.email, ''), v_full_name, 'resident', v_building_id);
+    values (NEW.id, coalesce(NEW.email, ''), v_full_name, v_role, v_building_id);
   end if;
 
   return NEW;
@@ -134,7 +134,7 @@ begin
     v_building_id := p_building_id;
 
     insert into public.profiles (id, email, full_name, role, building_id)
-    values (v_user_id, p_email, p_full_name, 'resident', v_building_id);
+    values (v_user_id, p_email, p_full_name, p_role, v_building_id);
   end if;
 
   return json_build_object('building_id', v_building_id, 'source', 'rpc_fallback');

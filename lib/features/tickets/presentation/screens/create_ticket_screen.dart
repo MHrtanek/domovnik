@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../features/profile/presentation/providers/profile_provider.dart';
 import '../../../../shared/widgets/app_bar_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../models/ticket_model.dart';
@@ -124,7 +125,8 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
             backgroundColor: AppColors.success,
           ),
         );
-        context.pop();
+        final isManager = ref.read(profileProvider).valueOrNull?.isManager ?? false;
+        context.go(isManager ? '/manager/tickets' : '/resident/tickets');
       }
     } catch (e) {
       if (mounted) {

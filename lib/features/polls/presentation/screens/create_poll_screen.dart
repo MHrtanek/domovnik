@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../features/profile/presentation/providers/profile_provider.dart';
 import '../../../../shared/widgets/app_bar_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../providers/polls_provider.dart';
@@ -108,7 +109,8 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             backgroundColor: AppColors.success,
           ),
         );
-        context.pop();
+        final isManager = ref.read(profileProvider).valueOrNull?.isManager ?? false;
+        context.go(isManager ? '/manager/more' : '/resident/polls');
       }
     } catch (e) {
       if (mounted) {

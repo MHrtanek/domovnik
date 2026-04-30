@@ -45,6 +45,8 @@ class TicketModel {
   final String buildingId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? supplierId;
+  final String? supplierName;
 
   const TicketModel({
     required this.id,
@@ -59,6 +61,8 @@ class TicketModel {
     required this.buildingId,
     required this.createdAt,
     required this.updatedAt,
+    this.supplierId,
+    this.supplierName,
   });
 
   // Všetky fotky - kombinuje legacy photoUrl + nové photoUrls
@@ -77,6 +81,12 @@ class TicketModel {
     final profiles = json['profiles'];
     if (profiles is Map<String, dynamic>) {
       createdByName = profiles['full_name'] as String?;
+    }
+
+    String? supplierName;
+    final supplierProfile = json['supplier_profile'];
+    if (supplierProfile is Map<String, dynamic>) {
+      supplierName = supplierProfile['full_name'] as String?;
     }
 
     // Načítaj viacero fotiek z ticket_photos
@@ -103,6 +113,8 @@ class TicketModel {
       buildingId: json['building_id'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      supplierId: json['supplier_id'] as String?,
+      supplierName: supplierName,
     );
   }
 
@@ -134,6 +146,8 @@ class TicketModel {
     String? buildingId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Object? supplierId = _sentinel,
+    Object? supplierName = _sentinel,
   }) {
     return TicketModel(
       id: id ?? this.id,
@@ -148,6 +162,10 @@ class TicketModel {
       buildingId: buildingId ?? this.buildingId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      supplierId: supplierId == _sentinel ? this.supplierId : supplierId as String?,
+      supplierName: supplierName == _sentinel ? this.supplierName : supplierName as String?,
     );
   }
 }
+
+const _sentinel = Object();

@@ -28,9 +28,9 @@ class ReservationsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: const DomovnikAppBar(
-        title: 'Rezervácie',
+        title: 'Priestory',
         showBack: false,
-        showLogout: true, // ← logout vpravo hore na mobile
+        showLogout: true,
       ),
       body: profileAsync.when(
         data: (profile) {
@@ -46,7 +46,7 @@ class ReservationsScreen extends ConsumerWidget {
                   indicatorColor: AppColors.primary,
                   tabs: [
                     const Tab(text: 'Rezervovať'),
-                    const Tab(text: 'Moje rezervácie'),
+                    Tab(text: profile.isManager ? 'Všetky rezervácie' : 'Moje rezervácie'),
                     if (profile.isManager) const Tab(text: 'Správca'),
                   ],
                 ),

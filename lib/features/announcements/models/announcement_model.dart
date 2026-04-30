@@ -6,6 +6,7 @@ class AnnouncementModel {
   final String createdBy;
   final String buildingId;
   final DateTime createdAt;
+  final List<String> photoUrls;
 
   const AnnouncementModel({
     required this.id,
@@ -15,6 +16,7 @@ class AnnouncementModel {
     required this.createdBy,
     required this.buildingId,
     required this.createdAt,
+    this.photoUrls = const [],
   });
 
   factory AnnouncementModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,9 @@ class AnnouncementModel {
       createdBy: json['created_by'] as String,
       buildingId: json['building_id'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
+      photoUrls: (json['photo_urls'] as List<dynamic>? ?? [])
+          .map((e) => e as String)
+          .toList(),
     );
   }
 
@@ -38,6 +43,7 @@ class AnnouncementModel {
       'created_by': createdBy,
       'building_id': buildingId,
       'created_at': createdAt.toIso8601String(),
+      'photo_urls': photoUrls,
     };
   }
 }

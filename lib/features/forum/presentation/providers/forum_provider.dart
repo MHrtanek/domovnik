@@ -87,3 +87,17 @@ class CreateForumReplyNotifier extends AsyncNotifier<void> {
 final createForumReplyProvider =
     AsyncNotifierProvider<CreateForumReplyNotifier, void>(
         CreateForumReplyNotifier.new);
+
+/// Celkový počet príspevkov + odpovedí v budove.
+/// Sledovaný správcom v ManagerShell pre zvukové upozornenia.
+final forumActivityCountProvider = Provider<int>((ref) {
+  final postCount = ref.watch(forumPostsProvider).maybeWhen(
+    data: (posts) => posts.length,
+    orElse: () => 0,
+  );
+  final replyCount = ref.watch(_forumRepliesCountProvider).maybeWhen(
+    data: (count) => count,
+    orElse: () => 0,
+  );
+  return postCount + replyCount;
+});

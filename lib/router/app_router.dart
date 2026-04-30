@@ -29,6 +29,12 @@ import '../features/inspections/presentation/screens/inspections_screen.dart';
 import '../features/suppliers/presentation/screens/suppliers_screen.dart';
 import '../features/chat/presentation/screens/conversations_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
+import '../features/residents/presentation/screens/residents_screen.dart';
+import '../features/house_rules/presentation/screens/house_rules_screen.dart';
+import '../features/building_plan/presentation/screens/building_plan_screen.dart';
+import '../features/tickets/presentation/screens/supplier_tickets_screen.dart';
+import '../features/forum/presentation/providers/forum_provider.dart';
+import '../core/services/sound_service.dart';
 
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -54,6 +60,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => ResidentShell(child: child),
         routes: [
+          GoRoute(path: '/resident/dashboard', builder: (c, s) => const ResidentDashboardScreen()),
           GoRoute(path: '/resident/announcements', builder: (c, s) => const AnnouncementsScreen()),
           GoRoute(path: '/resident/tickets', builder: (c, s) => const TicketsListScreen()),
           GoRoute(path: '/resident/forum', builder: (c, s) => const ForumScreen()),
@@ -65,7 +72,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/resident/profile', builder: (c, s) => const ProfileScreen()),
           GoRoute(path: '/resident/inspections', builder: (c, s) => const InspectionsScreen()),
           GoRoute(path: '/resident/suppliers', builder: (c, s) => const SuppliersScreen()),
+          GoRoute(path: '/resident/house-rules', builder: (c, s) => const HouseRulesScreen()),
+          GoRoute(path: '/resident/building-plan', builder: (c, s) => const BuildingPlanScreen()),
           GoRoute(path: '/resident/chat', builder: (c, s) => const ConversationsScreen()),
+          GoRoute(path: '/resident/tickets/create', builder: (c, s) => const CreateTicketScreen()),
+          GoRoute(path: '/resident/tickets/:id', builder: (c, s) => TicketDetailScreen(ticketId: s.pathParameters['id']!)),
         ],
       ),
 
@@ -86,6 +97,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/manager/inspections', builder: (c, s) => const InspectionsScreen()),
           GoRoute(path: '/manager/suppliers', builder: (c, s) => const SuppliersScreen()),
           GoRoute(path: '/manager/chat', builder: (c, s) => const ConversationsScreen()),
+          GoRoute(path: '/manager/residents', builder: (c, s) => const ResidentsScreen()),
+          GoRoute(path: '/manager/house-rules', builder: (c, s) => const HouseRulesScreen()),
+          GoRoute(path: '/manager/building-plan', builder: (c, s) => const BuildingPlanScreen()),
+          GoRoute(path: '/manager/tickets/create', builder: (c, s) => const CreateTicketScreen()),
+          GoRoute(path: '/manager/tickets/:id', builder: (c, s) => TicketDetailScreen(ticketId: s.pathParameters['id']!)),
+        ],
+      ),
+
+      // Supplier shell
+      ShellRoute(
+        builder: (context, state, child) => SupplierShell(child: child),
+        routes: [
+          GoRoute(path: '/supplier/tickets', builder: (c, s) => const SupplierTicketsScreen()),
+          GoRoute(path: '/supplier/tickets/:id', builder: (c, s) => TicketDetailScreen(ticketId: s.pathParameters['id']!)),
+          GoRoute(path: '/supplier/profile', builder: (c, s) => const ProfileScreen()),
         ],
       ),
 
@@ -118,7 +144,13 @@ class _DashboardRedirect extends ConsumerWidget {
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
-            context.go(profile.isManager ? '/manager/dashboard' : '/resident/announcements');
+            if (profile.isManager) {
+              context.go('/manager/dashboard');
+            } else if (profile.isSupplier) {
+              context.go('/supplier/tickets');
+            } else {
+              context.go('/resident/dashboard');
+            }
           }
         });
         return const Scaffold(body: LoadingWidget());
@@ -161,25 +193,129 @@ Future<void> _doLogout(BuildContext context, WidgetRef ref) async {
   }
 }
 
+// ── Supplier Shell ───────────────────────────────────────────────────────────
+
+class SupplierShell extends ConsumerWidget {
+  final Widget child;
+  const SupplierShell({super.key, required this.child});
+
+  static const _tabs = ['/supplier/tickets', '/supplier/profile'];
+
+  static const _destinations = <NavigationRailDestination>[
+    NavigationRailDestination(
+      icon: Icon(Icons.build_outlined),
+      selectedIcon: Icon(Icons.build),
+      label: Text('Tikety'),
+    ),
+    NavigationRailDestination(
+      icon: Icon(Icons.person_outline),
+      selectedIcon: Icon(Icons.person),
+      label: Text('Profil'),
+    ),
+  ];
+
+  int _currentIndex(String location) {
+    final idx = _tabs.indexWhere((t) => location.startsWith(t));
+    return idx < 0 ? 0 : idx;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final location = GoRouterState.of(context).matchedLocation;
+    final currentIndex = _currentIndex(location);
+    final isWide = MediaQuery.of(context).size.width > 600;
+
+    if (isWide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            NavigationRail(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (i) => context.go(_tabs[i]),
+              labelType: NavigationRailLabelType.all,
+              destinations: _destinations,
+              trailing: Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.logout),
+                          tooltip: 'Odhlásiť sa',
+                          onPressed: () => _doLogout(context, ref),
+                        ),
+                        const Text(
+                          'Odhlásiť',
+                          style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(child: child),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: currentIndex,
+        onTap: (i) => context.go(_tabs[i]),
+        type: BottomNavigationBarType.fixed,
+        selectedFontSize: 11,
+        unselectedFontSize: 11,
+        selectedItemColor: AppColors.primary,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.build_outlined),
+            activeIcon: Icon(Icons.build),
+            label: 'Tikety',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profil',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Resident Shell ───────────────────────────────────────────────────────────
 
-class ResidentShell extends ConsumerWidget {
+class ResidentShell extends ConsumerStatefulWidget {
   final Widget child;
   const ResidentShell({super.key, required this.child});
 
+  @override
+  ConsumerState<ResidentShell> createState() => _ResidentShellState();
+}
+
+class _ResidentShellState extends ConsumerState<ResidentShell> {
+  bool _moreOpen = false;
+
   static const _tabs = [
-    '/resident/announcements',
+    '/resident/dashboard',
     '/resident/tickets',
     '/resident/forum',
-    '/resident/polls',
+    '/resident/chat',
     '/resident/more',
   ];
 
   static const _destinations = <NavigationRailDestination>[
     NavigationRailDestination(
-      icon: Icon(Icons.campaign_outlined),
-      selectedIcon: Icon(Icons.campaign),
-      label: Text('Oznamy'),
+      icon: Icon(Icons.home_outlined),
+      selectedIcon: Icon(Icons.home),
+      label: Text('Domov'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.build_outlined),
@@ -192,9 +328,9 @@ class ResidentShell extends ConsumerWidget {
       label: Text('Fórum'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.how_to_vote_outlined),
-      selectedIcon: Icon(Icons.how_to_vote),
-      label: Text('Hlasovanie'),
+      icon: Icon(Icons.chat_outlined),
+      selectedIcon: Icon(Icons.chat),
+      label: Text('Správy'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.grid_view_outlined),
@@ -204,13 +340,16 @@ class ResidentShell extends ConsumerWidget {
   ];
 
   int _currentIndex(String location) {
-    if (location.startsWith('/resident/reservations') ||
+    if (location.startsWith('/resident/announcements') ||
+        location.startsWith('/resident/reservations') ||
         location.startsWith('/resident/contacts') ||
         location.startsWith('/resident/documents') ||
         location.startsWith('/resident/inspections') ||
         location.startsWith('/resident/suppliers') ||
         location.startsWith('/resident/profile') ||
-        location.startsWith('/resident/chat')) {
+        location.startsWith('/resident/polls') ||
+        location.startsWith('/resident/house-rules') ||
+        location.startsWith('/resident/building-plan')) {
       return 4;
     }
     final idx = _tabs.indexWhere((t) => location.startsWith(t));
@@ -218,7 +357,7 @@ class ResidentShell extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final currentIndex = _currentIndex(location);
     final isWide = MediaQuery.of(context).size.width > 600;
@@ -230,10 +369,16 @@ class ResidentShell extends ConsumerWidget {
           children: [
             NavigationRail(
               selectedIndex: currentIndex,
-              onDestinationSelected: (i) => context.go(_tabs[i]),
+              onDestinationSelected: (i) {
+                if (i == 4) {
+                  setState(() => _moreOpen = !_moreOpen);
+                } else {
+                  setState(() => _moreOpen = false);
+                  context.go(_tabs[i]);
+                }
+              },
               labelType: NavigationRailLabelType.all,
               destinations: _destinations,
-              // Logout tlačidlo dole na NavigationRail
               trailing: Expanded(
                 child: Align(
                   alignment: Alignment.bottomCenter,
@@ -267,8 +412,40 @@ class ResidentShell extends ConsumerWidget {
                 ),
               ),
             ),
-            const VerticalDivider(thickness: 1, width: 1),
-            Expanded(child: child),
+            if (_moreOpen) ...[
+              Container(
+                width: 220,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(right: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8)],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text('Ďalšie', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
+                    ),
+                    _MoreTile(icon: Icons.campaign_outlined, label: 'Oznamy', onTap: () { setState(() => _moreOpen = false); context.go('/resident/announcements'); }),
+                    _MoreTile(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', onTap: () { setState(() => _moreOpen = false); context.go('/resident/polls'); }),
+                    _MoreTile(icon: Icons.event_available_outlined, label: 'Priestory', onTap: () { setState(() => _moreOpen = false); context.go('/resident/reservations'); }),
+                    _MoreTile(icon: Icons.contacts_outlined, label: 'Kontakty', onTap: () { setState(() => _moreOpen = false); context.go('/resident/contacts'); }),
+                    _MoreTile(icon: Icons.folder_outlined, label: 'Dokumenty', onTap: () { setState(() => _moreOpen = false); context.go('/resident/documents'); }),
+                    _MoreTile(icon: Icons.assignment_outlined, label: 'Revízie', onTap: () { setState(() => _moreOpen = false); context.go('/resident/inspections'); }),
+                    _MoreTile(icon: Icons.menu_book_outlined, label: 'Domový poriadok', onTap: () { setState(() => _moreOpen = false); context.go('/resident/house-rules'); }),
+                    _MoreTile(icon: Icons.apartment_outlined, label: 'Plán budovy', onTap: () { setState(() => _moreOpen = false); context.go('/resident/building-plan'); }),
+                  ],
+                ),
+              ),
+              const VerticalDivider(thickness: 1, width: 1),
+            ],
+            Expanded(
+              child: GestureDetector(
+                onTap: () { if (_moreOpen) setState(() => _moreOpen = false); },
+                child: widget.child,
+              ),
+            ),
           ],
         ),
       );
@@ -276,7 +453,7 @@ class ResidentShell extends ConsumerWidget {
 
     // ── Mobil: BottomNavigationBar + logout v AppBar (cez showLogout) ───────
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: (i) => context.go(_tabs[i]),
@@ -286,9 +463,9 @@ class ResidentShell extends ConsumerWidget {
         selectedItemColor: AppColors.primary,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.campaign_outlined),
-            activeIcon: Icon(Icons.campaign),
-            label: 'Oznamy',
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: 'Domov',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.build_outlined),
@@ -301,9 +478,9 @@ class ResidentShell extends ConsumerWidget {
             label: 'Fórum',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.how_to_vote_outlined),
-            activeIcon: Icon(Icons.how_to_vote),
-            label: 'Hlasovanie',
+            icon: Icon(Icons.chat_outlined),
+            activeIcon: Icon(Icons.chat),
+            label: 'Správy',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.grid_view_outlined),
@@ -318,15 +495,22 @@ class ResidentShell extends ConsumerWidget {
 
 // ── Manager Shell ────────────────────────────────────────────────────────────
 
-class ManagerShell extends ConsumerWidget {
+class ManagerShell extends ConsumerStatefulWidget {
   final Widget child;
   const ManagerShell({super.key, required this.child});
+
+  @override
+  ConsumerState<ManagerShell> createState() => _ManagerShellState();
+}
+
+class _ManagerShellState extends ConsumerState<ManagerShell> {
+  bool _moreOpen = false;
 
   static const _tabs = [
     '/manager/dashboard',
     '/manager/announcements',
     '/manager/tickets',
-    '/manager/forum',
+    '/manager/chat',
     '/manager/more',
   ];
 
@@ -347,9 +531,9 @@ class ManagerShell extends ConsumerWidget {
       label: Text('Tikety'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.forum_outlined),
-      selectedIcon: Icon(Icons.forum),
-      label: Text('Fórum'),
+      icon: Icon(Icons.chat_outlined),
+      selectedIcon: Icon(Icons.chat),
+      label: Text('Správy'),
     ),
     NavigationRailDestination(
       icon: Icon(Icons.grid_view_outlined),
@@ -366,7 +550,10 @@ class ManagerShell extends ConsumerWidget {
         location.startsWith('/manager/inspections') ||
         location.startsWith('/manager/suppliers') ||
         location.startsWith('/manager/profile') ||
-        location.startsWith('/manager/chat')) {
+        location.startsWith('/manager/forum') ||
+        location.startsWith('/manager/residents') ||
+        location.startsWith('/manager/house-rules') ||
+        location.startsWith('/manager/building-plan')) {
       return 4;
     }
     final idx = _tabs.indexWhere((t) => location.startsWith(t));
@@ -374,10 +561,18 @@ class ManagerShell extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final currentIndex = _currentIndex(location);
     final isWide = MediaQuery.of(context).size.width > 600;
+
+    // Zvukové upozornenie pre správcu: nová aktivita vo fóre mimo fóra
+    ref.listen<int>(forumActivityCountProvider, (prev, next) {
+      if (prev == null) return;
+      if (next > prev && !location.startsWith('/manager/forum')) {
+        playNotificationSound();
+      }
+    });
 
     if (isWide) {
       // ── PC: NavigationRail na ľavej strane ──────────────────────────────
@@ -386,7 +581,14 @@ class ManagerShell extends ConsumerWidget {
           children: [
             NavigationRail(
               selectedIndex: currentIndex,
-              onDestinationSelected: (i) => context.go(_tabs[i]),
+              onDestinationSelected: (i) {
+                if (i == 4) {
+                  setState(() => _moreOpen = !_moreOpen);
+                } else {
+                  setState(() => _moreOpen = false);
+                  context.go(_tabs[i]);
+                }
+              },
               labelType: NavigationRailLabelType.all,
               destinations: _destinations,
               trailing: Expanded(
@@ -422,8 +624,42 @@ class ManagerShell extends ConsumerWidget {
                 ),
               ),
             ),
-            const VerticalDivider(thickness: 1, width: 1),
-            Expanded(child: child),
+            if (_moreOpen) ...[
+              Container(
+                width: 220,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(right: BorderSide(color: Colors.grey.withValues(alpha: 0.2))),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8)],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text('Ďalšie', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
+                    ),
+                    _MoreTile(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', onTap: () { setState(() => _moreOpen = false); context.go('/manager/polls'); }),
+                    _MoreTile(icon: Icons.event_available_outlined, label: 'Priestory', onTap: () { setState(() => _moreOpen = false); context.go('/manager/reservations'); }),
+                    _MoreTile(icon: Icons.contacts_outlined, label: 'Kontakty', onTap: () { setState(() => _moreOpen = false); context.go('/manager/contacts'); }),
+                    _MoreTile(icon: Icons.folder_outlined, label: 'Dokumenty', onTap: () { setState(() => _moreOpen = false); context.go('/manager/documents'); }),
+                    _MoreTile(icon: Icons.forum_outlined, label: 'Fórum', onTap: () { setState(() => _moreOpen = false); context.go('/manager/forum'); }),
+                    _MoreTile(icon: Icons.assignment_outlined, label: 'Revízie', onTap: () { setState(() => _moreOpen = false); context.go('/manager/inspections'); }),
+                    _MoreTile(icon: Icons.business_outlined, label: 'Dodávatelia', onTap: () { setState(() => _moreOpen = false); context.go('/manager/suppliers'); }),
+                    _MoreTile(icon: Icons.people_outlined, label: 'Evidencia bytov', onTap: () { setState(() => _moreOpen = false); context.go('/manager/residents'); }),
+                    _MoreTile(icon: Icons.menu_book_outlined, label: 'Domový poriadok', onTap: () { setState(() => _moreOpen = false); context.go('/manager/house-rules'); }),
+                    _MoreTile(icon: Icons.apartment_outlined, label: 'Plán budovy', onTap: () { setState(() => _moreOpen = false); context.go('/manager/building-plan'); }),
+                  ],
+                ),
+              ),
+              const VerticalDivider(thickness: 1, width: 1),
+            ],
+            Expanded(
+              child: GestureDetector(
+                onTap: () { if (_moreOpen) setState(() => _moreOpen = false); },
+                child: widget.child,
+              ),
+            ),
           ],
         ),
       );
@@ -431,7 +667,7 @@ class ManagerShell extends ConsumerWidget {
 
     // ── Mobil: BottomNavigationBar ───────────────────────────────────────────
     return Scaffold(
-      body: child,
+      body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         onTap: (i) => context.go(_tabs[i]),
@@ -456,9 +692,9 @@ class ManagerShell extends ConsumerWidget {
             label: 'Tikety',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.forum_outlined),
-            activeIcon: Icon(Icons.forum),
-            label: 'Fórum',
+            icon: Icon(Icons.chat_outlined),
+            activeIcon: Icon(Icons.chat),
+            label: 'Správy',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.grid_view_outlined),
@@ -484,10 +720,15 @@ class ResidentMoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _MoreItem(icon: Icons.chat_outlined, label: 'Správy', route: '/resident/chat', color: const Color(0xFF0277bd)),
-      _MoreItem(icon: Icons.event_available_outlined, label: 'Rezervácie', route: '/resident/reservations', color: const Color(0xFF1a3a6b)),
-      _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/resident/contacts', color: const Color(0xFF2e7d32)),
-      _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/resident/documents', color: const Color(0xFFe65100)),
+      _MoreItem(icon: Icons.campaign_outlined, label: 'Oznamy', route: '/resident/announcements', color: const Color(0xFF1565c0)),
+      _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/resident/polls', color: const Color(0xFF1a3a6b)),
+      _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/resident/reservations', color: const Color(0xFF2e7d32)),
+      _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/resident/contacts', color: const Color(0xFFe65100)),
+      _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/resident/documents', color: const Color(0xFF6a1b9a)),
+      _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/resident/inspections', color: const Color(0xFF00838f)),
+      _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/resident/house-rules', color: const Color(0xFF4527a0)),
+      _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/resident/building-plan', color: const Color(0xFF00695c)),
+      _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/resident/profile', color: const Color(0xFF37474f)),
     ];
 
     return Scaffold(
@@ -525,12 +766,17 @@ class ManagerMoreScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       _MoreItem(icon: Icons.chat_outlined, label: 'Správy', route: '/manager/chat', color: const Color(0xFF0277bd)),
+      _MoreItem(icon: Icons.forum_outlined, label: 'Fórum', route: '/manager/forum', color: const Color(0xFF00695c)),
       _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/manager/polls', color: const Color(0xFF1565c0)),
-      _MoreItem(icon: Icons.event_available_outlined, label: 'Rezervácie', route: '/manager/reservations', color: const Color(0xFF2e7d32)),
+      _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/manager/reservations', color: const Color(0xFF2e7d32)),
       _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/manager/contacts', color: const Color(0xFFe65100)),
       _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/manager/documents', color: const Color(0xFF6a1b9a)),
       _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/manager/inspections', color: const Color(0xFF00838f)),
       _MoreItem(icon: Icons.business_outlined, label: 'Dodávatelia', route: '/manager/suppliers', color: const Color(0xFF558b2f)),
+      _MoreItem(icon: Icons.people_outlined, label: 'Evidencia bytov', route: '/manager/residents', color: const Color(0xFF1565c0)),
+      _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/manager/house-rules', color: const Color(0xFF4527a0)),
+      _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/manager/building-plan', color: const Color(0xFF00695c)),
+      _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/manager/profile', color: const Color(0xFF37474f)),
     ];
 
     return Scaffold(
@@ -605,6 +851,26 @@ class _MoreCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── More panel tile ──────────────────────────────────────────────────────────
+
+class _MoreTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _MoreTile({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, size: 20, color: AppColors.textSecondary),
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      dense: true,
+      onTap: onTap,
     );
   }
 }

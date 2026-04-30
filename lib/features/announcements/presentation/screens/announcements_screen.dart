@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -128,6 +129,65 @@ class AnnouncementsScreen extends ConsumerWidget {
   }
 }
 
+void _showPhoto(BuildContext context, List<String> urls, int initialIndex) {
+  Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => _PhotoViewScreen(urls: urls, initialIndex: initialIndex),
+  ));
+}
+
+class _PhotoViewScreen extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+  const _PhotoViewScreen({required this.urls, required this.initialIndex});
+  @override
+  State<_PhotoViewScreen> createState() => _PhotoViewScreenState();
+}
+
+class _PhotoViewScreenState extends State<_PhotoViewScreen> {
+  late int _current;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text('${_current + 1} / ${widget.urls.length}'),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _current = i),
+        itemBuilder: (context, index) => InteractiveViewer(
+          child: Center(
+            child: CachedNetworkImage(
+              imageUrl: widget.urls[index],
+              fit: BoxFit.contain,
+              placeholder: (_, __) => const Center(child: CircularProgressIndicator(color: Colors.white)),
+              errorWidget: (_, __, ___) => const Icon(Icons.broken_image_outlined, color: Colors.white, size: 48),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AnnouncementCard extends StatelessWidget {
   final AnnouncementModel announcement;
   final bool isManager;
@@ -194,6 +254,31 @@ class _AnnouncementCard extends StatelessWidget {
             ],
             const SizedBox(height: 8),
             Text(announcement.content, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.5)),
+            if (announcement.photoUrls.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: announcement.photoUrls.length,
+                  itemBuilder: (context, i) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => _showPhoto(context, announcement.photoUrls, i),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: announcement.photoUrls[i],
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             Text(DateFormatter.formatRelative(announcement.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],

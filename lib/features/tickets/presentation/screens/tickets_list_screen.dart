@@ -30,7 +30,10 @@ class TicketsListScreen extends ConsumerWidget {
       floatingActionButton: profileAsync.maybeWhen(
         data: (profile) => profile?.isResident == true
             ? FloatingActionButton.extended(
-                onPressed: () => context.push('/tickets/create'),
+                onPressed: () {
+                  final isManager = ref.read(profileProvider).valueOrNull?.isManager ?? false;
+                  context.go(isManager ? '/manager/tickets/create' : '/resident/tickets/create');
+                },
                 backgroundColor: AppColors.primary,
                 icon: const Icon(Icons.add, color: Colors.white),
                 label: const Text(
@@ -98,13 +101,22 @@ class TicketsListScreen extends ConsumerWidget {
                   );
                 }
 
+                final profile = ref.read(profileProvider).valueOrNull;
+                final isManager = profile?.isManager ?? false;
+                final isSupplier = profile?.isSupplier ?? false;
                 return ListView.builder(
                   itemCount: tickets.length,
                   itemBuilder: (context, index) {
                     final ticket = tickets[index];
                     return _TicketCard(
                       ticket: ticket,
-                      onTap: () => context.push('/tickets/${ticket.id}'),
+                      onTap: () => context.go(
+                        isManager
+                            ? '/manager/tickets/${ticket.id}'
+                            : isSupplier
+                                ? '/supplier/tickets/${ticket.id}'
+                                : '/resident/tickets/${ticket.id}',
+                      ),
                     );
                   },
                 );
@@ -224,6 +236,27 @@ class _TicketCard extends StatelessWidget {
                         fontSize: 12,
                         color: AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (ticket.supplierName != null &&
+                  ticket.supplierName!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.engineering_outlined,
+                      size: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      ticket.supplierName!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],

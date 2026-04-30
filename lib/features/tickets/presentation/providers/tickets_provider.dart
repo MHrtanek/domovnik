@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../data/ticket_repository.dart';
 import '../../models/ticket_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../profile/models/profile_model.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 
 final ticketRepositoryProvider = Provider<TicketRepository>((ref) {
@@ -26,7 +27,15 @@ final ticketsProvider = StreamProvider<List<TicketModel>>((ref) {
   if (profile.isManager && profile.buildingId != null) {
     return ref.read(ticketRepositoryProvider).getTickets(profile.buildingId!);
   }
+  if (profile.isSupplier) {
+    return ref.read(ticketRepositoryProvider).getSupplierTickets(profile.id);
+  }
   return ref.read(ticketRepositoryProvider).getMyTickets(profile.id);
+});
+
+final buildingDodavatelProfilesProvider =
+    FutureProvider.family<List<ProfileModel>, String>((ref, buildingId) {
+  return ref.read(profileRepositoryProvider).getDodavatelProfiles(buildingId);
 });
 
 enum TicketFilterStatus { all, prijate, vRieseni, ukoncene }
@@ -128,3 +137,23 @@ final ticketDetailProvider =
     FutureProvider.family<TicketModel?, String>((ref, ticketId) async {
   return ref.read(ticketRepositoryProvider).getTicket(ticketId);
 });
+
+class AssignSupplierNotifier extends AsyncNotifier<void> {
+  @override
+  Future<void> build() async {}
+
+  Future<void> assignSupplier(String ticketId, String? supplierId) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(ticketRepositoryProvider).assignSupplier(
+        ticketId: ticketId,
+        supplierId: supplierId,
+      );
+      ref.invalidate(ticketDetailProvider(ticketId));
+      ref.invalidate(ticketsProvider);
+    });
+  }
+}
+
+final assignSupplierProvider =
+    AsyncNotifierProvider<AssignSupplierNotifier, void>(AssignSupplierNotifier.new);

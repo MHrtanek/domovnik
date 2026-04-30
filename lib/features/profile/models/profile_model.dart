@@ -23,6 +23,7 @@ class ProfileModel {
 
   bool get isManager => role == 'manager';
   bool get isResident => role == 'resident';
+  bool get isSupplier => role == 'dodavatel';
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
     return ProfileModel(

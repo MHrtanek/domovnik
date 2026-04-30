@@ -85,7 +85,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final code = _inviteCodeController.text.trim().toUpperCase();
       final result = await Supabase.instance.client
           .from('invite_codes')
-          .select('id, building_id, used, expires_at')
+          .select('id, building_id, used, expires_at, role')
           .eq('code', code)
           .maybeSingle();
 
@@ -99,12 +99,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
       final buildingId = result['building_id'] as String;
       final codeId = result['id'] as String;
+      final codeRole = result['role'] as String? ?? 'resident';
 
       await ref.read(authNotifierProvider.notifier).signUp(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             fullName: _fullNameController.text.trim(),
-            role: 'resident',
+            role: codeRole,
             buildingId: buildingId,
           );
 

@@ -154,11 +154,47 @@ class ForumRepository {
     }
   }
 
+  Future<void> updateReply({
+    required String id,
+    required String content,
+  }) async {
+    try {
+      await _client.from('forum_replies').update({'content': content}).eq('id', id);
+    } catch (e) {
+      debugPrint('ForumRepository.updateReply error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> deleteReply(String replyId) async {
     try {
       await _client.from('forum_replies').delete().eq('id', replyId);
     } catch (e) {
       debugPrint('ForumRepository.deleteReply error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> incrementPostLikes(String id, int currentLikes) async {
+    try {
+      await _client
+          .from('forum_posts')
+          .update({'likes_count': currentLikes + 1})
+          .eq('id', id);
+    } catch (e) {
+      debugPrint('ForumRepository.incrementPostLikes error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> incrementReplyLikes(String id, int currentLikes) async {
+    try {
+      await _client
+          .from('forum_replies')
+          .update({'likes_count': currentLikes + 1})
+          .eq('id', id);
+    } catch (e) {
+      debugPrint('ForumRepository.incrementReplyLikes error: $e');
       rethrow;
     }
   }

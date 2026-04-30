@@ -221,8 +221,8 @@ class ManagerDashboardScreen extends ConsumerWidget {
                   error: (_, __) => const SizedBox.shrink(),
                 ),
 
-                // ── Najbližšie rezervácie ─────────────────────────────────
-                _SectionHeader(title: 'Najbližšie rezervácie', route: '/manager/reservations', ref: ref),
+                // ── Najbližšie priestory ──────────────────────────────────
+                _SectionHeader(title: 'Najbližšie priestory', route: '/manager/reservations', ref: ref),
                 const SizedBox(height: 8),
                 reservationsAsync.when(
                   data: (reservations) {

@@ -1,9 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../features/profile/models/profile_model.dart';
 import '../../../../features/profile/presentation/providers/profile_provider.dart';
 import '../../../../shared/widgets/app_bar_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
@@ -20,9 +22,23 @@ class TicketDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ticketFuture = ref.watch(ticketDetailProvider(ticketId));
     final profileAsync = ref.watch(profileProvider);
+    final profile = profileAsync.valueOrNull;
+    final isManager = profile?.isManager ?? false;
+    final isSupplier = profile?.isSupplier ?? false;
+
+    final backRoute = isManager
+        ? '/manager/tickets'
+        : isSupplier
+            ? '/supplier/tickets'
+            : '/resident/tickets';
 
     return Scaffold(
-      appBar: const DomovnikAppBar(title: 'Detail tiketu'),
+      appBar: DomovnikAppBar(
+        title: 'Detail tiketu',
+        leading: BackButton(
+          onPressed: () => context.go(backRoute),
+        ),
+      ),
       body: ticketFuture.when(
         data: (ticket) {
           if (ticket == null) {
@@ -50,11 +66,18 @@ class _TicketDetailBody extends ConsumerStatefulWidget {
 class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
   late TicketStatus _selectedStatus;
   bool _updating = false;
+  String? _selectedSupplierId;
+  bool _assigningSupplier = false;
 
   @override
   void initState() {
     super.initState();
+    _selectedSupplierId = widget.ticket.supplierId;
+    final isSupplier = widget.profileAsync.valueOrNull?.isSupplier ?? false;
     _selectedStatus = widget.ticket.status;
+    if (isSupplier && _selectedStatus == TicketStatus.prijate) {
+      _selectedStatus = TicketStatus.vRieseni;
+    }
   }
 
   Future<void> _updateStatus() async {
@@ -84,6 +107,33 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
     }
   }
 
+  Future<void> _assignSupplier() async {
+    if (_selectedSupplierId == widget.ticket.supplierId) return;
+    setState(() => _assigningSupplier = true);
+    try {
+      await ref
+          .read(assignSupplierProvider.notifier)
+          .assignSupplier(widget.ticket.id, _selectedSupplierId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Dodávateľ bol priradený'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Chyba: ${e.toString()}'), backgroundColor: AppColors.error),
+        );
+        setState(() => _selectedSupplierId = widget.ticket.supplierId);
+      }
+    } finally {
+      if (mounted) setState(() => _assigningSupplier = false);
+    }
+  }
+
   void _showPhotoFullscreen(BuildContext context, List<String> urls, int initialIndex) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -96,6 +146,10 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
   Widget build(BuildContext context) {
     final isManager = widget.profileAsync.maybeWhen(
       data: (profile) => profile?.isManager ?? false,
+      orElse: () => false,
+    );
+    final isSupplier = widget.profileAsync.maybeWhen(
+      data: (profile) => profile?.isSupplier ?? false,
       orElse: () => false,
     );
 
@@ -141,6 +195,12 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                     label: 'Aktualizované',
                     value: DateFormatter.formatDateTime(widget.ticket.updatedAt),
                   ),
+                  if (widget.ticket.supplierName != null)
+                    _DetailRow(
+                      icon: Icons.engineering_outlined,
+                      label: 'Dodávateľ',
+                      value: widget.ticket.supplierName!,
+                    ),
                 ],
               ),
             ),
@@ -178,37 +238,37 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                       style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 12),
-                    // Grid fotiek - max 3 v rade
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 1,
-                      ),
-                      itemCount: photos.length,
-                      itemBuilder: (context, index) {
-                        return GestureDetector(
-                          onTap: () => _showPhotoFullscreen(context, photos, index),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: CachedNetworkImage(
-                              imageUrl: photos[index],
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
-                                color: AppColors.surface,
-                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                              ),
-                              errorWidget: (_, __, ___) => Container(
-                                color: AppColors.surface,
-                                child: const Icon(Icons.broken_image_outlined, color: AppColors.textSecondary),
+                    // Zoznam fotiek — plná šírka, max výška 200px
+                    Column(
+                      children: List.generate(photos.length, (index) {
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: index < photos.length - 1 ? 8 : 0),
+                          child: GestureDetector(
+                            onTap: () => _showPhotoFullscreen(context, photos, index),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                height: 200,
+                                width: double.infinity,
+                                child: CachedNetworkImage(
+                                    imageUrl: photos[index],
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, __) => Container(
+                                      height: 120,
+                                      color: AppColors.surface,
+                                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                    ),
+                                    errorWidget: (_, __, ___) => Container(
+                                      height: 80,
+                                      color: AppColors.surface,
+                                      child: const Icon(Icons.broken_image_outlined, color: AppColors.textSecondary),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
                         );
-                      },
+                      }),
                     ),
                   ],
                 ),
@@ -252,8 +312,8 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
             ),
           ),
 
-          // Manager status update
-          if (isManager) ...[
+          // Status update: manager sees all statuses, supplier sees vRieseni + ukoncene
+          if (isManager || isSupplier) ...[
             const SizedBox(height: 12),
             Card(
               child: Padding(
@@ -269,7 +329,9 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                         labelText: 'Stav',
                         prefixIcon: Icon(Icons.edit_outlined),
                       ),
-                      items: TicketStatus.values
+                      items: (isSupplier
+                              ? [TicketStatus.vRieseni, TicketStatus.ukoncene]
+                              : TicketStatus.values)
                           .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
                           .toList(),
                       onChanged: (v) => setState(() => _selectedStatus = v!),
@@ -284,6 +346,18 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                   ],
                 ),
               ),
+            ),
+          ],
+
+          // Supplier assignment: manager only
+          if (isManager) ...[
+            const SizedBox(height: 12),
+            _SupplierAssignCard(
+              ticket: widget.ticket,
+              selectedSupplierId: _selectedSupplierId,
+              assigning: _assigningSupplier,
+              onChanged: (id) => setState(() => _selectedSupplierId = id),
+              onAssign: _assignSupplier,
             ),
           ],
         ],
@@ -346,6 +420,78 @@ class _PhotoGalleryScreenState extends State<_PhotoGalleryScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// ── Supplier assignment card ─────────────────────────────────────────────────
+
+class _SupplierAssignCard extends ConsumerWidget {
+  final TicketModel ticket;
+  final String? selectedSupplierId;
+  final bool assigning;
+  final void Function(String?) onChanged;
+  final VoidCallback onAssign;
+
+  const _SupplierAssignCard({
+    required this.ticket,
+    required this.selectedSupplierId,
+    required this.assigning,
+    required this.onChanged,
+    required this.onAssign,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dodavatelAsync = ref.watch(buildingDodavatelProfilesProvider(ticket.buildingId));
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Priradiť dodávateľa',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            dodavatelAsync.when(
+              data: (dodavatelia) => DropdownButtonFormField<String?>(
+                value: selectedSupplierId,
+                decoration: const InputDecoration(
+                  labelText: 'Dodávateľ',
+                  prefixIcon: Icon(Icons.engineering_outlined),
+                ),
+                items: [
+                  const DropdownMenuItem(value: null, child: Text('— Žiadny —')),
+                  ...dodavatelia.map((ProfileModel p) => DropdownMenuItem(
+                        value: p.id,
+                        child: Text(p.fullName ?? p.email),
+                      )),
+                ],
+                onChanged: onChanged,
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (_, __) => const Text(
+                'Chyba pri načítaní dodávateľov',
+                style: TextStyle(color: AppColors.error),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: assigning ? null : onAssign,
+              child: assigning
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Priradiť'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -55,7 +55,7 @@ class AuthRepository {
         data: {
           'full_name': fullName,
           'role': role,
-          if (role == 'resident' && buildingId != null)
+          if ((role == 'resident' || role == 'dodavatel') && buildingId != null)
             'building_id': buildingId,
           if (role == 'manager' && buildingName != null)
             'building_name': buildingName,
@@ -103,7 +103,7 @@ class AuthRepository {
 
   Future<void> signOut() async {
     try {
-      await _client.auth.signOut();
+      await _client.auth.signOut(scope: SignOutScope.global);
     } catch (e) {
       debugPrint('AuthRepository.signOut error: $e');
       rethrow;

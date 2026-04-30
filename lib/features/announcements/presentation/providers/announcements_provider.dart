@@ -28,6 +28,7 @@ class CreateAnnouncementNotifier extends AsyncNotifier<void> {
     required String title,
     required String content,
     required bool isUrgent,
+    List<String> photoUrls = const [],
   }) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
@@ -41,6 +42,7 @@ class CreateAnnouncementNotifier extends AsyncNotifier<void> {
             isUrgent: isUrgent,
             createdBy: profile.id,
             buildingId: profile.buildingId!,
+            photoUrls: photoUrls,
           );
     });
   }

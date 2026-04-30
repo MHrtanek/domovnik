@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/profile/presentation/providers/profile_provider.dart';
 
 /// AppBar pre Domovník.
 ///
@@ -78,7 +79,22 @@ class DomovnikAppBar extends ConsumerWidget implements PreferredSizeWidget {
       backgroundColor: backgroundColor,
       foregroundColor: foregroundColor,
       leading: leading ??
-          (showBack ? BackButton(onPressed: () => context.pop()) : null),
+          (showBack
+              ? BackButton(onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    final profile = ref.read(profileProvider).valueOrNull;
+                    if (profile?.isManager == true) {
+                      context.go('/manager/dashboard');
+                    } else if (profile?.isSupplier == true) {
+                      context.go('/supplier/tickets');
+                    } else {
+                      context.go('/resident/dashboard');
+                    }
+                  }
+                })
+              : null),
       automaticallyImplyLeading: showBack,
       actions: allActions.isEmpty ? null : allActions,
     );

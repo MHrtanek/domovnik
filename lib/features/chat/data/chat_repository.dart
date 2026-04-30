@@ -44,8 +44,10 @@ class ChatRepository {
 
     return Rx.combineLatest2(sentStream, receivedStream, (sent, received) {
       final all = [...sent, ...received];
-      all.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-      return all;
+      final seen = <String>{};
+      final unique = all.where((m) => seen.add(m.id)).toList();
+      unique.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      return unique;
     });
   }
 

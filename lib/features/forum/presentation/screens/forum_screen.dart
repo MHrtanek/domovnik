@@ -10,6 +10,78 @@ import '../../../../shared/widgets/error_widget.dart';
 import '../../models/forum_model.dart';
 import '../providers/forum_provider.dart';
 
+// ── Dialog pre vytvorenie / úpravu príspevku ─────────────────────────────────
+
+void _showPostDialog(BuildContext context, WidgetRef ref, ForumPostModel? existing) {
+  final isManager = ref.read(profileProvider).maybeWhen(
+    data: (p) => p?.isManager ?? false,
+    orElse: () => false,
+  );
+  final titleController = TextEditingController(text: existing?.title ?? '');
+  final contentController = TextEditingController(text: existing?.content ?? '');
+  final formKey = GlobalKey<FormState>();
+  final isEdit = existing != null;
+
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(isEdit ? 'Upraviť príspevok' : 'Nový príspevok'),
+      content: Form(
+        key: formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: titleController,
+              decoration: const InputDecoration(labelText: 'Nadpis *'),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Zadajte nadpis' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: contentController,
+              decoration: InputDecoration(
+                labelText: 'Text *',
+                helperText: isManager ? null : 'Max 500 znakov',
+              ),
+              maxLines: 4,
+              maxLength: isManager ? null : 500,
+              validator: (v) => v == null || v.trim().isEmpty ? 'Zadajte text' : null,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Zrušiť'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            if (!formKey.currentState!.validate()) return;
+            Navigator.of(ctx).pop();
+            if (isEdit) {
+              await ref.read(forumRepositoryProvider).updatePost(
+                id: existing.id,
+                title: titleController.text.trim(),
+                content: contentController.text.trim(),
+              );
+              ref.invalidate(forumPostsProvider);
+            } else {
+              await ref.read(createForumPostProvider.notifier).createPost(
+                title: titleController.text.trim(),
+                content: contentController.text.trim(),
+              );
+            }
+          },
+          child: Text(isEdit ? 'Uložiť' : 'Pridať'),
+        ),
+      ],
+    ),
+  );
+}
+
+// ── ForumScreen ──────────────────────────────────────────────────────────────
+
 class ForumScreen extends ConsumerWidget {
   const ForumScreen({super.key});
 
@@ -18,11 +90,12 @@ class ForumScreen extends ConsumerWidget {
     final postsAsync = ref.watch(forumPostsProvider);
     final profileAsync = ref.watch(profileProvider);
     final currentUserId = profileAsync.maybeWhen(data: (p) => p?.id, orElse: () => null);
+    final isManager = profileAsync.maybeWhen(data: (p) => p?.isManager ?? false, orElse: () => false);
 
     return Scaffold(
       appBar: const DomovnikAppBar(title: 'Fórum', showBack: false),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCreatePostDialog(context, ref),
+        onPressed: () => _showPostDialog(context, ref, null),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Nový príspevok', style: TextStyle(color: Colors.white)),
@@ -40,12 +113,13 @@ class ForumScreen extends ConsumerWidget {
             itemCount: posts.length,
             itemBuilder: (context, index) {
               final post = posts[index];
-              final isOwner = currentUserId == post.createdBy;
+              final canAct = currentUserId == post.createdBy || isManager;
               return _PostCard(
                 post: post,
-                isOwner: isOwner,
-                onTap: () => _openPost(context, ref, post),
-                onEdit: isOwner ? () => _showEditPostDialog(context, ref, post) : null,
+                canAct: canAct,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ForumPostDetailScreen(post: post)),
+                ),
               );
             },
           );
@@ -58,99 +132,23 @@ class ForumScreen extends ConsumerWidget {
       ),
     );
   }
-
-  void _showCreatePostDialog(BuildContext context, WidgetRef ref) {
-    _showPostDialog(context, ref, null);
-  }
-
-  void _showEditPostDialog(BuildContext context, WidgetRef ref, ForumPostModel post) {
-    _showPostDialog(context, ref, post);
-  }
-
-  void _showPostDialog(BuildContext context, WidgetRef ref, ForumPostModel? existing) {
-    final titleController = TextEditingController(text: existing?.title ?? '');
-    final contentController = TextEditingController(text: existing?.content ?? '');
-    final formKey = GlobalKey<FormState>();
-    final isEdit = existing != null;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isEdit ? 'Upraviť príspevok' : 'Nový príspevok'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Nadpis *'),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Zadajte nadpis' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: contentController,
-                decoration: const InputDecoration(labelText: 'Text *'),
-                maxLines: 4,
-                validator: (v) => v == null || v.trim().isEmpty ? 'Zadajte text' : null,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Zrušiť'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (!formKey.currentState!.validate()) return;
-              Navigator.of(ctx).pop();
-              if (isEdit) {
-                await ref.read(forumRepositoryProvider).updatePost(
-                  id: existing.id,
-                  title: titleController.text.trim(),
-                  content: contentController.text.trim(),
-                );
-                ref.invalidate(forumPostsProvider);
-              } else {
-                await ref.read(createForumPostProvider.notifier).createPost(
-                  title: titleController.text.trim(),
-                  content: contentController.text.trim(),
-                );
-              }
-            },
-            child: Text(isEdit ? 'Uložiť' : 'Pridať'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openPost(BuildContext context, WidgetRef ref, ForumPostModel post) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ForumPostDetailScreen(post: post),
-      ),
-    );
-  }
 }
 
-class _PostCard extends StatelessWidget {
+// ── Karta príspevku v zozname ─────────────────────────────────────────────────
+
+class _PostCard extends ConsumerWidget {
   final ForumPostModel post;
-  final bool isOwner;
+  final bool canAct;
   final VoidCallback onTap;
-  final VoidCallback? onEdit;
 
   const _PostCard({
     required this.post,
-    required this.isOwner,
+    required this.canAct,
     required this.onTap,
-    this.onEdit,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
@@ -161,30 +159,11 @@ class _PostCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      post.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (isOwner)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: InkWell(
-                        onTap: onEdit,
-                        borderRadius: BorderRadius.circular(16),
-                        child: const Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ),
-                ],
+              Text(
+                post.title,
+                style: Theme.of(context).textTheme.titleMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 6),
               Text(
@@ -207,13 +186,77 @@ class _PostCard extends StatelessWidget {
                   Text(DateFormatter.formatRelative(post.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
+              if (canAct) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _ActionIcon(
+                      icon: Icons.edit_outlined,
+                      onTap: () => _showPostDialog(context, ref, post),
+                    ),
+                    _ActionIcon(
+                      icon: Icons.delete_outline,
+                      color: AppColors.error,
+                      onTap: () => _confirmDelete(context, ref),
+                    ),
+                    _ActionIcon(
+                      icon: Icons.thumb_up_outlined,
+                      label: '${post.likesCount}',
+                      onTap: () => _like(ref),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
   }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vymazať príspevok'),
+        content: const Text('Naozaj chcete vymazať tento príspevok aj so všetkými odpoveďami?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Zrušiť'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Vymazať'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(forumRepositoryProvider).deletePost(post.id);
+      ref.invalidate(forumPostsProvider);
+      ref.invalidate(forumRepliesProvider(post.id));
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Chyba: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _like(WidgetRef ref) async {
+    try {
+      await ref.read(forumRepositoryProvider).incrementPostLikes(post.id, post.likesCount);
+      ref.invalidate(forumPostsProvider);
+    } catch (_) {}
+  }
 }
+
+// ── Detail príspevku ─────────────────────────────────────────────────────────
 
 class ForumPostDetailScreen extends ConsumerStatefulWidget {
   final ForumPostModel post;
@@ -237,6 +280,7 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
   Widget build(BuildContext context) {
     final repliesAsync = ref.watch(forumRepliesProvider(widget.post.id));
     final profileAsync = ref.watch(profileProvider);
+    final isManager = profileAsync.maybeWhen(data: (p) => p?.isManager ?? false, orElse: () => false);
 
     return Scaffold(
       appBar: DomovnikAppBar(title: widget.post.title),
@@ -246,6 +290,7 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // ── Karta príspevku ──────────────────────────────────────
                 Card(
                   color: AppColors.primary.withValues(alpha: 0.05),
                   child: Padding(
@@ -259,7 +304,10 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                           children: [
                             const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
-                            Text(widget.post.createdByName ?? 'Neznámy', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                            Text(
+                              widget.post.createdByName ?? 'Neznámy',
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                            ),
                             const Spacer(),
                             Text(DateFormatter.formatRelative(widget.post.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
@@ -268,46 +316,26 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                           data: (profile) {
                             if (profile == null) return const SizedBox.shrink();
                             if (profile.id == widget.post.createdBy || profile.isManager) {
-                              return Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton.icon(
-                                  onPressed: () async {
-                                    final confirmed = await showDialog<bool>(
-                                      context: context,
-                                      builder: (ctx) => AlertDialog(
-                                        title: const Text('Vymazať príspevok'),
-                                        content: const Text('Naozaj chcete vymazať tento príspevok aj so všetkými odpoveďami?'),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.of(ctx).pop(false),
-                                            child: const Text('Zrušiť'),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: () => Navigator.of(ctx).pop(true),
-                                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-                                            child: const Text('Vymazať'),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                    if (confirmed != true) return;
-                                    try {
-                                      await ref.read(forumRepositoryProvider).deletePost(widget.post.id);
-                                      ref.invalidate(forumPostsProvider);
-                                      if (context.mounted) Navigator.of(context).pop();
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Chyba: $e'),
-                                            backgroundColor: AppColors.error,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  },
-                                  icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 16),
-                                  label: const Text('Vymazať', style: TextStyle(color: AppColors.error)),
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    _ActionIcon(
+                                      icon: Icons.edit_outlined,
+                                      onTap: () => _showPostDialog(context, ref, widget.post),
+                                    ),
+                                    _ActionIcon(
+                                      icon: Icons.delete_outline,
+                                      color: AppColors.error,
+                                      onTap: () => _confirmDeletePost(context),
+                                    ),
+                                    _ActionIcon(
+                                      icon: Icons.thumb_up_outlined,
+                                      label: '${widget.post.likesCount}',
+                                      onTap: () => _likePost(),
+                                    ),
+                                  ],
                                 ),
                               );
                             }
@@ -319,15 +347,22 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 16),
                 const Text('Odpovede', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                 const SizedBox(height: 8),
+
+                // ── Odpovede ─────────────────────────────────────────────
                 repliesAsync.when(
                   data: (replies) {
                     if (replies.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Text('Zatiaľ žiadne odpovede', style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
+                        child: Text(
+                          'Zatiaľ žiadne odpovede',
+                          style: TextStyle(color: AppColors.textSecondary),
+                          textAlign: TextAlign.center,
+                        ),
                       );
                     }
                     return Column(
@@ -337,13 +372,11 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                           try {
                             await ref.read(forumRepositoryProvider).deleteReply(reply.id);
                             ref.invalidate(forumRepliesProvider(widget.post.id));
+                            ref.invalidate(forumPostsProvider);
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Chyba: $e'),
-                                  backgroundColor: AppColors.error,
-                                ),
+                                SnackBar(content: Text('Chyba: $e'), backgroundColor: AppColors.error),
                               );
                             }
                           }
@@ -357,6 +390,8 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
               ],
             ),
           ),
+
+          // ── Vstup pre odpoveď ────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -368,6 +403,7 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                 Expanded(
                   child: TextField(
                     controller: _replyController,
+                    maxLength: isManager ? null : 500,
                     decoration: const InputDecoration(
                       hintText: 'Napísať odpoveď...',
                       border: OutlineInputBorder(),
@@ -397,51 +433,258 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
     _replyController.clear();
     await ref.read(createForumReplyProvider.notifier).createReply(content: text, postId: widget.post.id);
   }
+
+  Future<void> _confirmDeletePost(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vymazať príspevok'),
+        content: const Text('Naozaj chcete vymazať tento príspevok aj so všetkými odpoveďami?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Zrušiť'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Vymazať'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(forumRepositoryProvider).deletePost(widget.post.id);
+      ref.invalidate(forumPostsProvider);
+      ref.invalidate(forumRepliesProvider(widget.post.id));
+      if (context.mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Chyba: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _likePost() async {
+    try {
+      await ref.read(forumRepositoryProvider).incrementPostLikes(widget.post.id, widget.post.likesCount);
+      ref.invalidate(forumPostsProvider);
+    } catch (_) {}
+  }
 }
 
-class _ReplyCard extends ConsumerWidget {
+// ── Karta odpovede ────────────────────────────────────────────────────────────
+
+class _ReplyCard extends ConsumerStatefulWidget {
   final ForumReplyModel reply;
   final VoidCallback onDelete;
 
   const _ReplyCard({required this.reply, required this.onDelete});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ReplyCard> createState() => _ReplyCardState();
+}
+
+class _ReplyCardState extends ConsumerState<_ReplyCard> {
+  bool _editing = false;
+  late final TextEditingController _editController;
+
+  @override
+  void initState() {
+    super.initState();
+    _editController = TextEditingController(text: widget.reply.content);
+  }
+
+  @override
+  void dispose() {
+    _editController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveEdit() async {
+    final text = _editController.text.trim();
+    if (text.isEmpty) return;
+    try {
+      await ref.read(forumRepositoryProvider).updateReply(
+        id: widget.reply.id,
+        content: text,
+      );
+      ref.invalidate(forumRepliesProvider(widget.reply.postId));
+      if (mounted) setState(() => _editing = false);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Chyba: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vymazať odpoveď'),
+        content: const Text('Naozaj chcete vymazať túto odpoveď?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Zrušiť'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Vymazať'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) widget.onDelete();
+  }
+
+  Future<void> _like() async {
+    try {
+      await ref.read(forumRepositoryProvider).incrementReplyLikes(widget.reply.id, widget.reply.likesCount);
+      ref.invalidate(forumRepliesProvider(widget.reply.postId));
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileProvider);
+    final canAct = profileAsync.maybeWhen(
+      data: (p) => p != null && (p.id == widget.reply.createdBy || p.isManager),
+      orElse: () => false,
+    );
+    final isManager = profileAsync.maybeWhen(
+      data: (p) => p?.isManager ?? false,
+      orElse: () => false,
+    );
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: _editing ? _buildEditView(isManager) : _buildReadView(canAct),
+      ),
+    );
+  }
+
+  Widget _buildEditView(bool isManager) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _editController,
+          maxLines: 4,
+          minLines: 1,
+          maxLength: isManager ? null : 500,
+          autofocus: true,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(reply.content, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.person_outline, size: 13, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
-                Text(reply.createdByName ?? 'Neznámy', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-                const Spacer(),
-                Text(DateFormatter.formatRelative(reply.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                profileAsync.maybeWhen(
-                  data: (profile) {
-                    if (profile == null) return const SizedBox.shrink();
-                    if (profile.id == reply.createdBy || profile.isManager) {
-                      return IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.error),
-                        onPressed: onDelete,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                  orElse: () => const SizedBox.shrink(),
-                ),
-              ],
+            TextButton(
+              onPressed: () => setState(() {
+                _editing = false;
+                _editController.text = widget.reply.content;
+              }),
+              child: const Text('Zrušiť'),
             ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: _saveEdit,
+              child: const Text('Uložiť'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReadView(bool canAct) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.reply.content, style: const TextStyle(fontSize: 14)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.person_outline, size: 13, color: AppColors.textSecondary),
+            const SizedBox(width: 4),
+            Text(
+              widget.reply.createdByName ?? 'Neznámy',
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+            ),
+            const Spacer(),
+            Text(DateFormatter.formatRelative(widget.reply.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          ],
+        ),
+        if (canAct) ...[
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _ActionIcon(
+                icon: Icons.edit_outlined,
+                onTap: () => setState(() => _editing = true),
+              ),
+              _ActionIcon(
+                icon: Icons.delete_outline,
+                color: AppColors.error,
+                onTap: _confirmDelete,
+              ),
+              _ActionIcon(
+                icon: Icons.thumb_up_outlined,
+                label: '${widget.reply.likesCount}',
+                onTap: _like,
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ── Akčná ikona ───────────────────────────────────────────────────────────────
+
+class _ActionIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String? label;
+  final VoidCallback onTap;
+
+  const _ActionIcon({
+    required this.icon,
+    required this.onTap,
+    this.color = AppColors.textSecondary,
+    this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            if (label != null) ...[
+              const SizedBox(width: 3),
+              Text(label!, style: TextStyle(fontSize: 11, color: color)),
+            ],
           ],
         ),
       ),

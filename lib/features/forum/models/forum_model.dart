@@ -8,6 +8,7 @@ class ForumPostModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int replyCount;
+  final int likesCount;
 
   const ForumPostModel({
     required this.id,
@@ -19,6 +20,7 @@ class ForumPostModel {
     required this.createdAt,
     required this.updatedAt,
     this.replyCount = 0,
+    this.likesCount = 0,
   });
 
   factory ForumPostModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class ForumPostModel {
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       replyCount: json['reply_count'] as int? ?? 0,
+      likesCount: json['likes_count'] as int? ?? 0,
     );
   }
 }
@@ -50,6 +53,7 @@ class ForumReplyModel {
   final String? createdByName;
   final String content;
   final DateTime createdAt;
+  final int likesCount;
 
   const ForumReplyModel({
     required this.id,
@@ -59,6 +63,7 @@ class ForumReplyModel {
     this.createdByName,
     required this.content,
     required this.createdAt,
+    this.likesCount = 0,
   });
 
   factory ForumReplyModel.fromJson(Map<String, dynamic> json) {
@@ -76,6 +81,7 @@ class ForumReplyModel {
       createdByName: createdByName,
       content: json['content'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
+      likesCount: json['likes_count'] as int? ?? 0,
     );
   }
 }

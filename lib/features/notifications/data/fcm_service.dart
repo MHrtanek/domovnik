@@ -71,6 +71,11 @@ class FcmService {
 
   Future<String?> getToken() async {
     try {
+      if (kIsWeb) {
+        return await _messaging.getToken(
+          vapidKey: 'BD-WctOQ4qd3dZkSc9i1NldHuc0ordU3MQ2gENtcDO3cZkllkCbKaycFcr9rwd3U1GP04An1-CLMBf5RnQdsJlU',
+        );
+      }
       final token = await _messaging.getToken();
       debugPrint('FCM token: $token');
       return token;

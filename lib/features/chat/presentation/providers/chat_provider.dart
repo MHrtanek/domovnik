@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../features/profile/models/profile_model.dart';
@@ -65,17 +66,6 @@ class SendMessageNotifier extends AsyncNotifier<void> {
 final sendMessageProvider =
     AsyncNotifierProvider<SendMessageNotifier, void>(SendMessageNotifier.new);
 
-// ── Stream zmien správ v budove (trigger pre refresh konverzácií) ────────────
-
-final _buildingMessageCountProvider = StreamProvider<int>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile == null || profile.buildingId == null) return const Stream.empty();
-  return ref.read(chatRepositoryProvider).watchBuildingMessageCount(
-    buildingId: profile.buildingId!,
-    userId: profile.id,
-  );
-});
-
 // ── Zoznam konverzácií ───────────────────────────────────────────────────────
 
 class ConversationEntry {
@@ -106,7 +96,9 @@ final conversationsProvider = StreamProvider<List<ConversationEntry>>((ref) {
       .eq('building_id', buildingId)
       .map((rows) => rows.length);
 
-  return trigger.asyncMap((_) async {
+  // switchMap (rxdart): každý nový event zruší predchádzajúci beh —
+  // zabraňuje zahadzovaniu eventov na broadcast streame pri asyncMap.
+  return trigger.switchMap((_) => Stream.fromFuture(() async {
     final List<ProfileModel> contacts;
     if (profile.isManager) {
       contacts = await profileRepo.getResidents(buildingId);
@@ -145,5 +137,5 @@ final conversationsProvider = StreamProvider<List<ConversationEntry>>((ref) {
     });
 
     return entries;
-  });
+  }()));
 });

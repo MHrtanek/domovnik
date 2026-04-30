@@ -38,6 +38,21 @@ class ProfileRepository {
     }
   }
 
+  Future<List<ProfileModel>> getDodavatelProfiles(String buildingId) async {
+    try {
+      final response = await _client
+          .from('profiles')
+          .select()
+          .eq('building_id', buildingId)
+          .eq('role', 'dodavatel')
+          .order('full_name');
+      return (response as List).map((r) => ProfileModel.fromJson(r)).toList();
+    } catch (e) {
+      debugPrint('ProfileRepository.getDodavatelProfiles error: $e');
+      rethrow;
+    }
+  }
+
   Future<ProfileModel?> getManagerForBuilding(String buildingId) async {
     try {
       final response = await _client

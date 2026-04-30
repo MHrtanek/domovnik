@@ -118,7 +118,7 @@ class ReservationRepository {
     String? note,
   }) async {
     try {
-      final dateStr = date.toIso8601String().split('T')[0];
+      final dateStr = DateTime.utc(date.year, date.month, date.day).toIso8601String().split('T')[0];
 
       // Skontroluj skĺdadanie časových intervalov: nová rezervácia sa prekýva
       // s existujúcou ak timeFrom < existing.timeTo && timeTo > existing.timeFrom
@@ -170,7 +170,7 @@ class ReservationRepository {
     required DateTime date,
   }) async {
     try {
-      final dateStr = date.toIso8601String().split('T')[0];
+      final dateStr = DateTime.utc(date.year, date.month, date.day).toIso8601String().split('T')[0];
       final rows = await _client
           .from('reservations')
           .select()

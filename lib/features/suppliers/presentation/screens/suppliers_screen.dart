@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/app_bar_widget.dart';
@@ -28,6 +29,23 @@ class SuppliersScreen extends ConsumerWidget {
         title: 'Dodávatelia',
         showBack: false,
         showLogout: true,
+        actions: isManager
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.person_add_outlined),
+                  tooltip: 'Pozvať dodávateľa',
+                  onPressed: () {
+                    final buildingId = ref.read(profileProvider).valueOrNull?.buildingId;
+                    if (buildingId != null) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => _SupplierInviteDialog(buildingId: buildingId),
+                      );
+                    }
+                  },
+                ),
+              ]
+            : null,
       ),
       floatingActionButton: isManager
           ? FloatingActionButton.extended(
@@ -268,6 +286,108 @@ class _SupplierCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Supplier invite dialog ────────────────────────────────────────────────────
+
+class _SupplierInviteDialog extends StatefulWidget {
+  final String buildingId;
+  const _SupplierInviteDialog({required this.buildingId});
+
+  @override
+  State<_SupplierInviteDialog> createState() => _SupplierInviteDialogState();
+}
+
+class _SupplierInviteDialogState extends State<_SupplierInviteDialog> {
+  String? _code;
+  String? _error;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _generateCode();
+  }
+
+  Future<void> _generateCode() async {
+    try {
+      final result = await Supabase.instance.client.rpc(
+        'generate_supplier_invite',
+        params: {'p_building_id': widget.buildingId},
+      );
+      if (mounted) setState(() { _code = result as String; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Pozvánka pre dodávateľa'),
+      content: _loading
+          ? const SizedBox(
+              height: 60,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : _error != null
+              ? Text('Chyba: $_error', style: const TextStyle(color: AppColors.error))
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Zdieľajte tento kód s dodávateľom. Môže ho použiť pri registrácii.',
+                      style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _code!,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 4,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, color: AppColors.primary),
+                            tooltip: 'Kopírovať',
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: _code!));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Kód skopírovaný')),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Platnosť: 30 dní',
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Zavrieť'),
+        ),
+      ],
     );
   }
 }

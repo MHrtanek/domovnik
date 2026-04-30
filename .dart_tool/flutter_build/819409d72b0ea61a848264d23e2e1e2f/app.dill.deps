@@ -4,6 +4,8 @@ file:///Users/matthew/.openclaw/workspace/domovnik/.dart_tool/package_config.jso
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/app.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/core/constants/app_colors.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/core/constants/supabase_constants.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/core/services/sound_service.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/core/services/sound_service_web.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/core/theme/app_theme.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/core/utils/date_formatter.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/core/utils/validators.dart
@@ -17,6 +19,9 @@ file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/auth/presentatio
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/auth/presentation/screens/login_screen.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/auth/presentation/screens/register_screen.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/auth/presentation/screens/reset_password_screen.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/building_plan/data/building_plan_repository.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/building_plan/presentation/providers/building_plan_provider.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/building_plan/presentation/screens/building_plan_screen.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/buildings/data/building_repository.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/buildings/models/building_model.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/buildings/presentation/providers/building_provider.dart
@@ -40,6 +45,9 @@ file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/forum/data/forum
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/forum/models/forum_model.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/forum/presentation/providers/forum_provider.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/forum/presentation/screens/forum_screen.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/house_rules/data/house_rules_repository.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/house_rules/presentation/providers/house_rules_provider.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/house_rules/presentation/screens/house_rules_screen.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/inspections/data/inspection_repository.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/inspections/models/inspection_model.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/inspections/presentation/providers/inspections_provider.dart
@@ -59,6 +67,8 @@ file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/reservations/dat
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/reservations/models/reservation_model.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/reservations/presentation/providers/reservation_provider.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/reservations/presentation/screens/reservations_screen.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/residents/presentation/providers/residents_provider.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/residents/presentation/screens/residents_screen.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/suppliers/data/supplier_repository.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/suppliers/models/supplier_model.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/suppliers/presentation/providers/suppliers_provider.dart
@@ -67,6 +77,7 @@ file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/tickets/data/tic
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/tickets/models/ticket_model.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/tickets/presentation/providers/tickets_provider.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/tickets/presentation/screens/create_ticket_screen.dart
+file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/tickets/presentation/screens/supplier_tickets_screen.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/tickets/presentation/screens/ticket_detail_screen.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/features/tickets/presentation/screens/tickets_list_screen.dart
 file:///Users/matthew/.openclaw/workspace/domovnik/lib/main.dart

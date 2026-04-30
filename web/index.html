@@ -18,12 +18,12 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Domovník – správa bytového domu">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="domovnik">
+  <meta name="apple-mobile-web-app-title" content="Domovník">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
@@ -31,6 +31,7 @@
 
   <title>domovnik</title>
   <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#272147">
 </head>
 <body>
   <!--
@@ -42,5 +43,42 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCtaZ0rWoBEvZTU0ctNwjOZAoa4yGpPyWM",
+      authDomain: "domovnik-e1e51.firebaseapp.com",
+      projectId: "domovnik-e1e51",
+      storageBucket: "domovnik-e1e51.firebasestorage.app",
+      messagingSenderId: "56523663052",
+      appId: "1:56523663052:web:fa2b358f894973edba0469"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .then((registration) => {
+          getToken(messaging, {
+            vapidKey: 'BD-WctOQ4qd3dZkSc9i1NldHuc0ordU3MQ2gENtcDO3cZkllkCbKaycFcr9rwd3U1GP04An1-CLMBf5RnQdsJlU',
+            serviceWorkerRegistration: registration
+          }).then((token) => {
+            if (token) {
+              console.log('FCM token:', token);
+              window._fcmToken = token;
+            }
+          });
+        });
+    }
+
+    onMessage(messaging, (payload) => {
+      const { title, body } = payload.notification;
+      new Notification(title, { body, icon: '/icons/Icon-192.png' });
+    });
+  </script>
 </body>
 </html>

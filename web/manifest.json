@@ -1,11 +1,11 @@
 {
-    "name": "domovnik",
-    "short_name": "domovnik",
+    "name": "Domovník",
+    "short_name": "Domovník",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Správa bytového domu",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
