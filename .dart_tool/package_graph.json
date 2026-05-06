@@ -17,6 +17,7 @@
         "flutter_localizations",
         "flutter_riverpod",
         "go_router",
+        "http",
         "image_picker",
         "intl",
         "riverpod_annotation",
@@ -153,6 +154,16 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
       ]
     },
     {
@@ -872,6 +883,16 @@
       "dependencies": []
     },
     {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
+      ]
+    },
+    {
       "name": "cross_file",
       "version": "0.3.5+2",
       "dependencies": [
@@ -1185,16 +1206,6 @@
       ]
     },
     {
-      "name": "http",
-      "version": "1.6.0",
-      "dependencies": [
-        "async",
-        "http_parser",
-        "meta",
-        "web"
-      ]
-    },
-    {
       "name": "app_links",
       "version": "7.0.0",
       "dependencies": [
@@ -1345,16 +1356,6 @@
       "version": "1.0.1",
       "dependencies": [
         "web"
-      ]
-    },
-    {
-      "name": "http_parser",
-      "version": "4.1.2",
-      "dependencies": [
-        "collection",
-        "source_span",
-        "string_scanner",
-        "typed_data"
       ]
     },
     {

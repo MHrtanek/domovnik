@@ -25,8 +25,16 @@ class _DomovnikAppState extends ConsumerState<DomovnikApp> {
     initializeDateFormatting('sk', null);
     _authSubscription =
         Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      // ignore: avoid_print
+      print('AUTH EVENT: ${data.event}');
+      // ignore: avoid_print
+      print('AUTH SESSION: ${data.session?.user.email}');
       if (data.event == AuthChangeEvent.passwordRecovery) {
         ref.read(routerProvider).go('/reset-password');
+      }
+      if (data.event == AuthChangeEvent.signedIn) {
+        // ignore: avoid_print
+        print('SIGNED IN AS: ${data.session?.user.email}');
       }
     });
   }

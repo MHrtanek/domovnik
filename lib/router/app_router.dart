@@ -44,10 +44,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/login',
     debugLogDiagnostics: true,
     redirect: (context, state) async {
-      if (state.matchedLocation == '/reset-password') return null;
+      final location = state.matchedLocation;
+
+      // Supabase implicit flow vkladá tokeny priamo do hash fragmentu.
+      // GoRouter (hash routing) ich interpretuje ako cestu — zachytíme
+      // ich tu a presmerujeme na /reset-password.
+      if (location.contains('access_token=') && location.contains('type=recovery')) {
+        return '/reset-password';
+      }
+
+      if (location == '/reset-password') return null;
       final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
-      final isAuthRoute = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
+      final isAuthRoute = location == '/login' || location == '/register';
       if (!isLoggedIn && !isAuthRoute) return '/login';
       if (isLoggedIn && isAuthRoute) return '/dashboard';
       return null;

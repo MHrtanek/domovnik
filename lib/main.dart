@@ -28,7 +28,10 @@ Future<void> main() async {
   // cold-štarte (zatvorenie/obnovenie prehliadača = nový cold-start vo webe).
   final prefs = await SharedPreferences.getInstance();
   final sessionOnly = prefs.getBool('session_only') ?? false;
-  if (sessionOnly && Supabase.instance.client.auth.currentUser != null) {
+  final uri = Uri.base;
+  final fragment = uri.fragment;
+  final isRecoveryFlow = fragment.contains('type=recovery');
+  if (sessionOnly && Supabase.instance.client.auth.currentUser != null && !isRecoveryFlow) {
     await Supabase.instance.client.auth.signOut();
   }
   // ─────────────────────────────────────────────────────────────────────────

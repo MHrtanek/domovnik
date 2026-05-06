@@ -1,0 +1,1 @@
+ /Users/matthew/Projects/domovnik/.dart_tool/flutter_build/779f7c2fe59cb169b7be0a0cffbcfc7c/dart_build_result.json:  /Users/matthew/Projects/domovnik/.dart_tool/package_config.json /Users/matthew/Projects/domovnik/pubspec.yaml /opt/homebrew/share/flutter/bin/cache/dart-sdk/version

@@ -32,6 +32,19 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Platnosť odkazu vypršala. Požiadajte o nový email na obnovenie hesla.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          context.go('/login');
+        }
+        return;
+      }
       await Supabase.instance.client.auth.updateUser(
         UserAttributes(password: _passwordController.text),
       );

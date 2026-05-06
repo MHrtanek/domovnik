@@ -113,7 +113,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       try {
         await ref.read(authRepositoryProvider).resetPassword(
               emailCtrl.text.trim(),
-              redirectTo: 'https://domovnik.online/#/reset-password',
+              redirectTo: 'https://domovnik.online',
             );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

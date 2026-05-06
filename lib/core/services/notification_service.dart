@@ -14,8 +14,9 @@ class NotificationService {
     String? excludeUserId,
   }) async {
     try {
-      final accessToken =
-          Supabase.instance.client.auth.currentSession!.accessToken;
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session == null) return;
+      final accessToken = session.accessToken;
 
       final payload = {
         'building_id': buildingId,
