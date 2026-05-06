@@ -22,6 +22,13 @@ class FcmService {
   );
 
   Future<void> initialize() async {
+    if (kIsWeb) {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('FCM foreground: ${message.notification?.title}');
+      });
+      return;
+    }
+
     // Register background handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
@@ -167,6 +174,36 @@ class FcmService {
     if (route != null) {
       debugPrint('FCM navigation to: $route');
       // Navigation handled via global router key
+    }
+  }
+
+  static Future<void> requestPermissionAfterInteraction() async {
+    if (!kIsWeb) return;
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      debugPrint('FCM permission: ${settings.authorizationStatus}');
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        final token = await messaging.getToken(
+          vapidKey: 'BD-WctOQ4qd3dZkSc9i1NldHuc0ordU3MQ2gENtcDO3cZkllkCbKaycFcr9rwd3U1GP04An1-CLMBf5RnQdsJlU',
+        );
+        if (token != null) {
+          final userId = Supabase.instance.client.auth.currentUser?.id;
+          if (userId != null) {
+            await Supabase.instance.client
+                .from('profiles')
+                .update({'fcm_token': token})
+                .eq('id', userId);
+            debugPrint('FCM token saved after interaction');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('FCM permission error: $e');
     }
   }
 }

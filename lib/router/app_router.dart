@@ -44,6 +44,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/login',
     debugLogDiagnostics: true,
     redirect: (context, state) async {
+      if (state.matchedLocation == '/reset-password') return null;
       final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';

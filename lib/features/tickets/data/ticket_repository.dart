@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/ticket_model.dart';
 import '../../../core/constants/supabase_constants.dart';
+import '../../../core/services/notification_service.dart';
 
 class TicketRepository {
   final SupabaseClient _client;
@@ -144,7 +145,16 @@ class TicketRepository {
           .select()
           .single();
 
-      return TicketModel.fromJson(response);
+      final ticket = TicketModel.fromJson(response);
+
+      await NotificationService.sendToBuilding(
+        buildingId: buildingId,
+        title: '🔧 Nový tiket',
+        body: title,
+        excludeUserId: createdBy,
+      );
+
+      return ticket;
     } catch (e) {
       debugPrint('TicketRepository.createTicket error: $e');
       rethrow;

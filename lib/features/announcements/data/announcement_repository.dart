@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/announcement_model.dart';
 import '../../../core/constants/supabase_constants.dart';
+import '../../../core/services/notification_service.dart';
 
 class AnnouncementRepository {
   final SupabaseClient _client;
@@ -44,7 +45,17 @@ class AnnouncementRepository {
           .select()
           .single();
 
-      return AnnouncementModel.fromJson(response);
+      final announcement = AnnouncementModel.fromJson(response);
+
+      debugPrint('AnnouncementRepository: calling NotificationService for building $buildingId');
+      await NotificationService.sendToBuilding(
+        buildingId: buildingId,
+        title: '📢 Nový oznam',
+        body: title,
+        excludeUserId: createdBy,
+      );
+
+      return announcement;
     } catch (e) {
       debugPrint('AnnouncementRepository.createAnnouncement error: $e');
       rethrow;

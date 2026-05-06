@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "56523663052",
+    "project_id": "domovnik-e1e51",
+    "storage_bucket": "domovnik-e1e51.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:56523663052:android:d47d64577ea8efabba0469",
+        "android_client_info": {
+          "package_name": "com.domovnik.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCleEays7Gl5ZF3iLEeEfa_z9nT9J0K4_0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

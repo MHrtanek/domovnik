@@ -33,23 +33,29 @@ Future<void> main() async {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  // FCM funguje len na mobile (Android/iOS) – na webe nie je Firebase nakonfigurovaný
-  if (!kIsWeb) {
-    try {
-      await Firebase.initializeApp();
-      final fcmService = FcmService();
-      await fcmService.initialize();
+  try {
+    await Firebase.initializeApp(
+      options: kIsWeb ? const FirebaseOptions(
+        apiKey: "AIzaSyCtaZ0rWoBEvZTU0ctNwjOZAoa4yGpPyWM",
+        authDomain: "domovnik-e1e51.firebaseapp.com",
+        projectId: "domovnik-e1e51",
+        storageBucket: "domovnik-e1e51.firebasestorage.app",
+        messagingSenderId: "56523663052",
+        appId: "1:56523663052:web:fa2b358f894973edba0469",
+      ) : null,
+    );
+    final fcmService = FcmService();
+    await fcmService.initialize();
 
-      final currentUser = Supabase.instance.client.auth.currentUser;
-      if (currentUser != null) {
-        final token = await fcmService.getToken();
-        if (token != null) {
-          await fcmService.saveFcmTokenToProfile(token);
-        }
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser != null) {
+      final token = await fcmService.getToken();
+      if (token != null) {
+        await fcmService.saveFcmTokenToProfile(token);
       }
-    } catch (e) {
-      debugPrint('Firebase not configured, skipping FCM init: $e');
     }
+  } catch (e) {
+    debugPrint('Firebase init error: $e');
   }
 
   runApp(

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../features/notifications/data/fcm_service.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../features/buildings/presentation/providers/building_provider.dart';
 import '../../../../shared/widgets/app_bar_widget.dart';
@@ -500,6 +502,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
 
                 const SizedBox(height: 32),
+
+                if (kIsWeb) ...[
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.notifications_outlined),
+                    label: const Text('Povoliť notifikácie'),
+                    onPressed: () async {
+                      await FcmService.requestPermissionAfterInteraction();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Notifikácie nastavené')),
+                        );
+                      }
+                    },
+                  ),
+                ],
 
                 OutlinedButton.icon(
                   onPressed: _changePassword,

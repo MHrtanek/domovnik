@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../../features/notifications/data/fcm_service.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
@@ -48,7 +51,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               // session_only = true  → odhlásiť pri ďalšom cold-štarte
               // session_only = false → session pretrváva (zapamätať ma)
               await prefs.setBool('session_only', !_rememberMe);
-              if (mounted) context.go('/dashboard');
+              if (mounted) {
+                context.go('/dashboard');
+                if (kIsWeb) {
+                  Future.delayed(const Duration(seconds: 2), () {
+                    FcmService.requestPermissionAfterInteraction();
+                  });
+                }
+              }
             }
           },
           loading: () {},
@@ -103,7 +113,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       try {
         await ref.read(authRepositoryProvider).resetPassword(
               emailCtrl.text.trim(),
-              redirectTo: 'https://domovnik.online',
+              redirectTo: 'https://domovnik.online/#/reset-password',
             );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -148,22 +158,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 48),
-                const Icon(Icons.apartment, size: 72, color: AppColors.primary),
-                const SizedBox(height: 16),
-                const Text(
-                  'Domovník',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                Center(
+                  child: Image.asset(
+                    'assets/logo_horizontal.png',
+                    width: 260,
+                    fit: BoxFit.contain,
                   ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Správa bytového domu',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 48),
 
