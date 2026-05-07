@@ -47,12 +47,9 @@ class NotificationService {
         body: jsonEncode(payload),
       );
 
-      print('NotificationService status: ${response.statusCode}');
-      print('NotificationService body: ${response.body}');
-      print('NotificationService payload: ${jsonEncode(payload)}');
     } catch (e, s) {
-      print('NotificationService error: $e');
-      print('NotificationService stack: $s');
+      debugPrint('NotificationService error: $e');
+      debugPrint('NotificationService stack: $s');
     }
   }
 }

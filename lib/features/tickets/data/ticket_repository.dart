@@ -195,7 +195,30 @@ class TicketRepository {
           .select()
           .single();
 
-      return TicketModel.fromJson(response);
+      final ticket = TicketModel.fromJson(response);
+
+      final (title, body) = switch (status) {
+        TicketStatus.vRieseni => (
+            '🔧 Tiket v riešení',
+            'Váš tiket "${ticket.title}" je teraz v riešení.',
+          ),
+        TicketStatus.ukoncene => (
+            '✅ Tiket ukončený',
+            'Váš tiket "${ticket.title}" bol ukončený.',
+          ),
+        _ => (
+            '📋 Aktualizácia tiketu',
+            'Status vášho tiketu "${ticket.title}" bol zmenený.',
+          ),
+      };
+
+      NotificationService.sendToUser(
+        targetUserId: ticket.createdBy,
+        title: title,
+        body: body,
+      );
+
+      return ticket;
     } catch (e) {
       debugPrint('TicketRepository.updateTicketStatus error: $e');
       rethrow;
