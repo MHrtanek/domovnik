@@ -99,7 +99,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  let building_id, title, body, exclude_user_id;
+  let building_id, title, body, exclude_user_id, target_user_id;
 
   try {
     const text = await req.text();
@@ -109,6 +109,7 @@ serve(async (req) => {
       title = parsed.title;
       body = parsed.body;
       exclude_user_id = parsed.exclude_user_id;
+      target_user_id = parsed.target_user_id;
     }
   } catch (e) {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
@@ -117,7 +118,7 @@ serve(async (req) => {
     });
   }
 
-  if (!building_id || !title || !body) {
+  if (!title || !body || (!building_id && !target_user_id)) {
     return new Response(JSON.stringify({ error: 'Missing required fields' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -126,12 +127,15 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('fcm_token')
-    .eq('building_id', building_id)
-    .not('fcm_token', 'is', null)
-    .neq('id', exclude_user_id ?? '')
+  let query = supabase.from('profiles').select('fcm_token').not('fcm_token', 'is', null)
+
+  if (target_user_id) {
+    query = query.eq('id', target_user_id)
+  } else {
+    query = query.eq('building_id', building_id).neq('id', exclude_user_id ?? '')
+  }
+
+  const { data: profiles } = await query
 
   console.log('Profiles found:', profiles?.length ?? 0);
   console.log('Building ID:', building_id);

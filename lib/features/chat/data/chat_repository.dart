@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/message_model.dart';
+import '../../../core/services/notification_service.dart';
 
 class ChatRepository {
   final SupabaseClient _client;
@@ -71,6 +72,11 @@ class ChatRepository {
         'read': false,
       });
       debugPrint('ChatRepository.sendMessage → SUCCESS');
+      NotificationService.sendToUser(
+        targetUserId: receiverId,
+        title: '💬 Nová správa',
+        body: content.length > 100 ? '${content.substring(0, 100)}…' : content,
+      );
     } catch (e) {
       debugPrint('ChatRepository.sendMessage → ERROR: $e');
       rethrow;
