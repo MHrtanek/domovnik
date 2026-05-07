@@ -57,6 +57,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Future.delayed(const Duration(seconds: 2), () {
                     FcmService.requestPermissionAfterInteraction();
                   });
+                } else {
+                  Future.delayed(const Duration(seconds: 1), () async {
+                    final fcm = FcmService();
+                    final token = await fcm.getToken();
+                    if (token != null) await fcm.saveFcmTokenToProfile(token);
+                  });
                 }
               }
             }
