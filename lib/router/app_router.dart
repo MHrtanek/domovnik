@@ -729,38 +729,22 @@ class ResidentMoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _MoreItem(icon: Icons.campaign_outlined, label: 'Oznamy', route: '/resident/announcements', color: const Color(0xFF1565c0)),
-      _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/resident/polls', color: const Color(0xFF1a3a6b)),
-      _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/resident/reservations', color: const Color(0xFF2e7d32)),
-      _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/resident/contacts', color: const Color(0xFFe65100)),
-      _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/resident/documents', color: const Color(0xFF6a1b9a)),
-      _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/resident/inspections', color: const Color(0xFF00838f)),
-      _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/resident/house-rules', color: const Color(0xFF4527a0)),
-      _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/resident/building-plan', color: const Color(0xFF00695c)),
-      _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/resident/profile', color: const Color(0xFF37474f)),
+      _MoreItem(icon: Icons.campaign_outlined, label: 'Oznamy', route: '/resident/announcements'),
+      _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/resident/polls'),
+      _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/resident/reservations'),
+      _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/resident/contacts'),
+      _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/resident/documents'),
+      _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/resident/inspections', isAlert: true),
+      _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/resident/house-rules'),
+      _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/resident/building-plan'),
+      _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/resident/profile'),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ďalšie'), centerTitle: true),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 600;
-          final crossCount = isWide ? 4 : 2;
-          return Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: EdgeInsets.all(isWide ? 28 : 16),
-              child: GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: crossCount,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: isWide ? 1.6 : 1.2,
-                children: items.map((item) => _MoreCard(item: item)).toList(),
-              ),
-            ),
-          );
-        },
+      appBar: AppBar(title: const Text('Ďalšie')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: _MoreList(items: items),
       ),
     );
   }
@@ -774,41 +758,25 @@ class ManagerMoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _MoreItem(icon: Icons.chat_outlined, label: 'Správy', route: '/manager/chat', color: const Color(0xFF0277bd)),
-      _MoreItem(icon: Icons.forum_outlined, label: 'Fórum', route: '/manager/forum', color: const Color(0xFF00695c)),
-      _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/manager/polls', color: const Color(0xFF1565c0)),
-      _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/manager/reservations', color: const Color(0xFF2e7d32)),
-      _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/manager/contacts', color: const Color(0xFFe65100)),
-      _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/manager/documents', color: const Color(0xFF6a1b9a)),
-      _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/manager/inspections', color: const Color(0xFF00838f)),
-      _MoreItem(icon: Icons.business_outlined, label: 'Dodávatelia', route: '/manager/suppliers', color: const Color(0xFF558b2f)),
-      _MoreItem(icon: Icons.people_outlined, label: 'Evidencia bytov', route: '/manager/residents', color: const Color(0xFF1565c0)),
-      _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/manager/house-rules', color: const Color(0xFF4527a0)),
-      _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/manager/building-plan', color: const Color(0xFF00695c)),
-      _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/manager/profile', color: const Color(0xFF37474f)),
+      _MoreItem(icon: Icons.chat_outlined, label: 'Správy', route: '/manager/chat'),
+      _MoreItem(icon: Icons.forum_outlined, label: 'Fórum', route: '/manager/forum'),
+      _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/manager/polls'),
+      _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/manager/reservations'),
+      _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/manager/contacts'),
+      _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/manager/documents'),
+      _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/manager/inspections', isAlert: true),
+      _MoreItem(icon: Icons.business_outlined, label: 'Dodávatelia', route: '/manager/suppliers'),
+      _MoreItem(icon: Icons.people_outlined, label: 'Evidencia bytov', route: '/manager/residents'),
+      _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/manager/house-rules'),
+      _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/manager/building-plan'),
+      _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/manager/profile'),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ďalšie'), centerTitle: true),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 600;
-          final crossCount = isWide ? 4 : 2;
-          return Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: EdgeInsets.all(isWide ? 28 : 16),
-              child: GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: crossCount,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: isWide ? 1.6 : 1.2,
-                children: items.map((item) => _MoreCard(item: item)).toList(),
-              ),
-            ),
-          );
-        },
+      appBar: AppBar(title: const Text('Ďalšie')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: _MoreList(items: items),
       ),
     );
   }
@@ -818,48 +786,42 @@ class _MoreItem {
   final IconData icon;
   final String label;
   final String route;
-  final Color color;
-  const _MoreItem({required this.icon, required this.label, required this.route, required this.color});
+  final bool isAlert;
+  const _MoreItem({required this.icon, required this.label, required this.route, this.isAlert = false});
 }
 
-class _MoreCard extends StatelessWidget {
-  final _MoreItem item;
-  const _MoreCard({required this.item});
+class _MoreList extends StatelessWidget {
+  final List<_MoreItem> items;
+  const _MoreList({required this.items});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.15)),
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            if (i > 0) const Divider(height: 1, indent: 56),
+            _MoreListItem(item: items[i]),
+          ],
+        ],
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.go(item.route),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: item.color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(item.icon, size: 24, color: item.color),
-              ),
-              const Spacer(),
-              Text(
-                item.label,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-        ),
-      ),
+    );
+  }
+}
+
+class _MoreListItem extends StatelessWidget {
+  final _MoreItem item;
+  const _MoreListItem({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item.isAlert ? AppColors.accent : AppColors.primary;
+    return ListTile(
+      leading: Icon(item.icon, color: color),
+      title: Text(item.label),
+      trailing: const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
+      onTap: () => context.go(item.route),
     );
   }
 }
