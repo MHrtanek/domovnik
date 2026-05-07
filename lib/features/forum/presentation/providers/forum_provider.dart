@@ -88,6 +88,16 @@ final createForumReplyProvider =
     AsyncNotifierProvider<CreateForumReplyNotifier, void>(
         CreateForumReplyNotifier.new);
 
+final hasLikedPostProvider =
+    FutureProvider.family<bool, String>((ref, postId) {
+  return ref.read(forumRepositoryProvider).hasLikedPost(postId);
+});
+
+final hasLikedReplyProvider =
+    FutureProvider.family<bool, String>((ref, replyId) {
+  return ref.read(forumRepositoryProvider).hasLikedReply(replyId);
+});
+
 /// Celkový počet príspevkov + odpovedí v budove.
 /// Sledovaný správcom v ManagerShell pre zvukové upozornenia.
 final forumActivityCountProvider = Provider<int>((ref) {

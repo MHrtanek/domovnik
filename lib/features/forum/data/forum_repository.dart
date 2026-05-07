@@ -175,27 +175,51 @@ class ForumRepository {
     }
   }
 
-  Future<void> incrementPostLikes(String id, int currentLikes) async {
+  Future<void> incrementPostLikes(String postId) async {
+    final userId = _client.auth.currentUser!.id;
     try {
-      await _client
-          .from('forum_posts')
-          .update({'likes_count': currentLikes + 1})
-          .eq('id', id);
+      await _client.rpc('increment_post_likes', params: {
+        'p_post_id': postId,
+        'p_user_id': userId,
+      });
     } catch (e) {
       debugPrint('ForumRepository.incrementPostLikes error: $e');
       rethrow;
     }
   }
 
-  Future<void> incrementReplyLikes(String id, int currentLikes) async {
+  Future<void> incrementReplyLikes(String replyId) async {
+    final userId = _client.auth.currentUser!.id;
     try {
-      await _client
-          .from('forum_replies')
-          .update({'likes_count': currentLikes + 1})
-          .eq('id', id);
+      await _client.rpc('increment_reply_likes', params: {
+        'p_reply_id': replyId,
+        'p_user_id': userId,
+      });
     } catch (e) {
       debugPrint('ForumRepository.incrementReplyLikes error: $e');
       rethrow;
     }
+  }
+
+  Future<bool> hasLikedPost(String postId) async {
+    final userId = _client.auth.currentUser!.id;
+    final result = await _client
+        .from('post_likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .maybeSingle();
+    return result != null;
+  }
+
+  Future<bool> hasLikedReply(String replyId) async {
+    final userId = _client.auth.currentUser!.id;
+    final result = await _client
+        .from('reply_likes')
+        .select('id')
+        .eq('reply_id', replyId)
+        .eq('user_id', userId)
+        .maybeSingle();
+    return result != null;
   }
 }

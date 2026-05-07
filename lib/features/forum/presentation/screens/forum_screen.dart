@@ -149,6 +149,11 @@ class _PostCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final hasLiked = ref.watch(hasLikedPostProvider(post.id)).maybeWhen(
+      data: (v) => v,
+      orElse: () => false,
+    );
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
@@ -186,11 +191,11 @@ class _PostCard extends ConsumerWidget {
                   Text(DateFormatter.formatRelative(post.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 ],
               ),
-              if (canAct) ...[
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (canAct) ...[
                     _ActionIcon(
                       icon: Icons.edit_outlined,
                       onTap: () => _showPostDialog(context, ref, post),
@@ -200,14 +205,15 @@ class _PostCard extends ConsumerWidget {
                       color: AppColors.error,
                       onTap: () => _confirmDelete(context, ref),
                     ),
-                    _ActionIcon(
-                      icon: Icons.thumb_up_outlined,
-                      label: '${post.likesCount}',
-                      onTap: () => _like(ref),
-                    ),
                   ],
-                ),
-              ],
+                  _ActionIcon(
+                    icon: hasLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                    color: hasLiked ? AppColors.primary : AppColors.textSecondary,
+                    label: '${post.likesCount}',
+                    onTap: () => _like(ref),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -250,8 +256,9 @@ class _PostCard extends ConsumerWidget {
 
   Future<void> _like(WidgetRef ref) async {
     try {
-      await ref.read(forumRepositoryProvider).incrementPostLikes(post.id, post.likesCount);
+      await ref.read(forumRepositoryProvider).incrementPostLikes(post.id);
       ref.invalidate(forumPostsProvider);
+      ref.invalidate(hasLikedPostProvider(post.id));
     } catch (_) {}
   }
 }
@@ -312,37 +319,38 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
                             Text(DateFormatter.formatRelative(widget.post.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
                         ),
-                        profileAsync.maybeWhen(
-                          data: (profile) {
-                            if (profile == null) return const SizedBox.shrink();
-                            if (profile.id == widget.post.createdBy || profile.isManager) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    _ActionIcon(
-                                      icon: Icons.edit_outlined,
-                                      onTap: () => _showPostDialog(context, ref, widget.post),
-                                    ),
-                                    _ActionIcon(
-                                      icon: Icons.delete_outline,
-                                      color: AppColors.error,
-                                      onTap: () => _confirmDeletePost(context),
-                                    ),
-                                    _ActionIcon(
-                                      icon: Icons.thumb_up_outlined,
-                                      label: '${widget.post.likesCount}',
-                                      onTap: () => _likePost(),
-                                    ),
-                                  ],
+                        Builder(builder: (context) {
+                          final profile = profileAsync.valueOrNull;
+                          final canAct = profile != null &&
+                              (profile.id == widget.post.createdBy || profile.isManager);
+                          final hasLiked = ref.watch(hasLikedPostProvider(widget.post.id))
+                              .maybeWhen(data: (v) => v, orElse: () => false);
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                if (canAct) ...[
+                                  _ActionIcon(
+                                    icon: Icons.edit_outlined,
+                                    onTap: () => _showPostDialog(context, ref, widget.post),
+                                  ),
+                                  _ActionIcon(
+                                    icon: Icons.delete_outline,
+                                    color: AppColors.error,
+                                    onTap: () => _confirmDeletePost(context),
+                                  ),
+                                ],
+                                _ActionIcon(
+                                  icon: hasLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                                  color: hasLiked ? AppColors.primary : AppColors.textSecondary,
+                                  label: '${widget.post.likesCount}',
+                                  onTap: _likePost,
                                 ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                          orElse: () => const SizedBox.shrink(),
-                        ),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
@@ -470,8 +478,9 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
 
   Future<void> _likePost() async {
     try {
-      await ref.read(forumRepositoryProvider).incrementPostLikes(widget.post.id, widget.post.likesCount);
+      await ref.read(forumRepositoryProvider).incrementPostLikes(widget.post.id);
       ref.invalidate(forumPostsProvider);
+      ref.invalidate(hasLikedPostProvider(widget.post.id));
     } catch (_) {}
   }
 }
@@ -547,8 +556,9 @@ class _ReplyCardState extends ConsumerState<_ReplyCard> {
 
   Future<void> _like() async {
     try {
-      await ref.read(forumRepositoryProvider).incrementReplyLikes(widget.reply.id, widget.reply.likesCount);
+      await ref.read(forumRepositoryProvider).incrementReplyLikes(widget.reply.id);
       ref.invalidate(forumRepliesProvider(widget.reply.postId));
+      ref.invalidate(hasLikedReplyProvider(widget.reply.id));
     } catch (_) {}
   }
 
@@ -611,6 +621,9 @@ class _ReplyCardState extends ConsumerState<_ReplyCard> {
   }
 
   Widget _buildReadView(bool canAct) {
+    final hasLiked = ref.watch(hasLikedReplyProvider(widget.reply.id))
+        .maybeWhen(data: (v) => v, orElse: () => false);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -628,11 +641,11 @@ class _ReplyCardState extends ConsumerState<_ReplyCard> {
             Text(DateFormatter.formatRelative(widget.reply.createdAt), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
-        if (canAct) ...[
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (canAct) ...[
               _ActionIcon(
                 icon: Icons.edit_outlined,
                 onTap: () => setState(() => _editing = true),
@@ -642,14 +655,15 @@ class _ReplyCardState extends ConsumerState<_ReplyCard> {
                 color: AppColors.error,
                 onTap: _confirmDelete,
               ),
-              _ActionIcon(
-                icon: Icons.thumb_up_outlined,
-                label: '${widget.reply.likesCount}',
-                onTap: _like,
-              ),
             ],
-          ),
-        ],
+            _ActionIcon(
+              icon: hasLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+              color: hasLiked ? AppColors.primary : AppColors.textSecondary,
+              label: '${widget.reply.likesCount}',
+              onTap: _like,
+            ),
+          ],
+        ),
       ],
     );
   }
