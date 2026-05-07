@@ -78,18 +78,17 @@ class TicketModel {
 
   factory TicketModel.fromJson(Map<String, dynamic> json) {
     String? createdByName;
-    final profiles = json['profiles'];
-    if (profiles is Map<String, dynamic>) {
-      createdByName = profiles['full_name'] as String?;
+    final creator = json['creator'] ?? json['profiles'];
+    if (creator is Map<String, dynamic>) {
+      createdByName = creator['full_name'] as String?;
     }
 
     String? supplierName;
-    final supplierProfile = json['supplier_profile'];
-    if (supplierProfile is Map<String, dynamic>) {
-      supplierName = supplierProfile['full_name'] as String?;
+    final supplier = json['supplier'] ?? json['supplier_profile'];
+    if (supplier is Map<String, dynamic>) {
+      supplierName = supplier['full_name'] as String?;
     }
 
-    // Načítaj viacero fotiek z ticket_photos
     final List<String> photoUrls = [];
     final ticketPhotos = json['ticket_photos'];
     if (ticketPhotos is List) {

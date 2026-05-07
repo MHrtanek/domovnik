@@ -38,7 +38,7 @@ class NotificationService {
       final session = Supabase.instance.client.auth.currentSession;
       if (session == null) return;
 
-      final response = await http.post(
+      await http.post(
         Uri.parse(_functionUrl),
         headers: {
           'Content-Type': 'application/json',

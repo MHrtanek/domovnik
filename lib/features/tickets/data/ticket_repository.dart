@@ -13,48 +13,30 @@ class TicketRepository {
 
   TicketRepository(this._client);
 
+  static const _select = '''
+    *,
+    creator:profiles!tickets_created_by_fkey(full_name),
+    supplier:profiles!supplier_id(full_name),
+    ticket_photos(photo_url)
+  ''';
+
+  Future<List<TicketModel>> _fetchByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    final data = await _client
+        .from(SupabaseConstants.tablTickets)
+        .select(_select)
+        .inFilter('id', ids)
+        .order('created_at', ascending: false);
+    return data.map((r) => TicketModel.fromJson(r)).toList();
+  }
+
   Stream<List<TicketModel>> getTickets(String buildingId) {
     return _client
         .from(SupabaseConstants.tablTickets)
         .stream(primaryKey: ['id'])
         .eq('building_id', buildingId)
         .order('created_at', ascending: false)
-        .map((rows) async {
-          final List<TicketModel> tickets = [];
-          for (final r in rows) {
-            final map = Map<String, dynamic>.from(r);
-            try {
-              final profile = await _client
-                  .from('profiles')
-                  .select('full_name')
-                  .eq('id', map['created_by'] as String)
-                  .maybeSingle();
-              map['profiles'] = profile;
-            } catch (_) {}
-            if (map['supplier_id'] != null) {
-              try {
-                final supplierProfile = await _client
-                    .from('profiles')
-                    .select('full_name')
-                    .eq('id', map['supplier_id'] as String)
-                    .maybeSingle();
-                map['supplier_profile'] = supplierProfile;
-              } catch (_) {}
-            }
-            // Načítaj fotky
-            try {
-              final photos = await _client
-                  .from('ticket_photos')
-                  .select('photo_url')
-                  .eq('ticket_id', map['id'] as String)
-                  .order('created_at');
-              map['ticket_photos'] = photos;
-            } catch (_) {}
-            tickets.add(TicketModel.fromJson(map));
-          }
-          return tickets;
-        })
-        .asyncMap((future) => future);
+        .asyncMap((rows) => _fetchByIds(rows.map((r) => r['id'] as String).toList()));
   }
 
   Stream<List<TicketModel>> getSupplierTickets(String supplierId) {
@@ -63,31 +45,7 @@ class TicketRepository {
         .stream(primaryKey: ['id'])
         .eq('supplier_id', supplierId)
         .order('created_at', ascending: false)
-        .map((rows) async {
-          final List<TicketModel> tickets = [];
-          for (final r in rows) {
-            final map = Map<String, dynamic>.from(r);
-            try {
-              final profile = await _client
-                  .from('profiles')
-                  .select('full_name')
-                  .eq('id', map['created_by'] as String)
-                  .maybeSingle();
-              map['profiles'] = profile;
-            } catch (_) {}
-            try {
-              final photos = await _client
-                  .from('ticket_photos')
-                  .select('photo_url')
-                  .eq('ticket_id', map['id'] as String)
-                  .order('created_at');
-              map['ticket_photos'] = photos;
-            } catch (_) {}
-            tickets.add(TicketModel.fromJson(map));
-          }
-          return tickets;
-        })
-        .asyncMap((future) => future);
+        .asyncMap((rows) => _fetchByIds(rows.map((r) => r['id'] as String).toList()));
   }
 
   Stream<List<TicketModel>> getMyTickets(String userId) {
@@ -96,31 +54,7 @@ class TicketRepository {
         .stream(primaryKey: ['id'])
         .eq('created_by', userId)
         .order('created_at', ascending: false)
-        .map((rows) async {
-          final List<TicketModel> tickets = [];
-          for (final r in rows) {
-            final map = Map<String, dynamic>.from(r);
-            try {
-              final profile = await _client
-                  .from('profiles')
-                  .select('full_name')
-                  .eq('id', map['created_by'] as String)
-                  .maybeSingle();
-              map['profiles'] = profile;
-            } catch (_) {}
-            try {
-              final photos = await _client
-                  .from('ticket_photos')
-                  .select('photo_url')
-                  .eq('ticket_id', map['id'] as String)
-                  .order('created_at');
-              map['ticket_photos'] = photos;
-            } catch (_) {}
-            tickets.add(TicketModel.fromJson(map));
-          }
-          return tickets;
-        })
-        .asyncMap((future) => future);
+        .asyncMap((rows) => _fetchByIds(rows.map((r) => r['id'] as String).toList()));
   }
 
   Future<TicketModel> createTicket({
@@ -270,35 +204,11 @@ class TicketRepository {
     try {
       final response = await _client
           .from(SupabaseConstants.tablTickets)
-          .select('*, profiles!tickets_created_by_fkey(full_name)')
+          .select(_select)
           .eq('id', ticketId)
           .maybeSingle();
-
       if (response == null) return null;
-      final map = Map<String, dynamic>.from(response);
-
-      if (map['supplier_id'] != null) {
-        try {
-          final supplierProfile = await _client
-              .from('profiles')
-              .select('full_name')
-              .eq('id', map['supplier_id'] as String)
-              .maybeSingle();
-          map['supplier_profile'] = supplierProfile;
-        } catch (_) {}
-      }
-
-      // Načítaj fotky
-      try {
-        final photos = await _client
-            .from('ticket_photos')
-            .select('photo_url')
-            .eq('ticket_id', ticketId)
-            .order('created_at');
-        map['ticket_photos'] = photos;
-      } catch (_) {}
-
-      return TicketModel.fromJson(map);
+      return TicketModel.fromJson(response);
     } catch (e) {
       debugPrint('TicketRepository.getTicket error: $e');
       rethrow;
