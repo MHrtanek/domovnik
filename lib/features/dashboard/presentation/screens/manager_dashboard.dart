@@ -192,27 +192,37 @@ class ManagerDashboardScreen extends ConsumerWidget {
                       children: [
                         _SectionHeader(title: '⚠️  Revízie vyžadujú pozornosť', route: '/manager/inspections', ref: ref),
                         const SizedBox(height: 8),
-                        ...urgent.map((i) => Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            leading: Icon(
-                              Icons.assignment_outlined,
-                              color: i.isExpired ? AppColors.error : AppColors.warning,
-                            ),
-                            title: Text(i.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                            subtitle: Text(
-                              i.isExpired
-                                  ? 'Vypršalo ${i.nextDate != null ? _dateFmt.format(i.nextDate!) : ""}'
-                                  : 'Za ${i.daysUntilNext} dní',
-                              style: TextStyle(
-                                color: i.isExpired ? AppColors.error : AppColors.warning,
-                                fontWeight: FontWeight.w500,
+                        ...urgent.map((i) {
+                          final accentColor = i.isExpired ? AppColors.error : AppColors.warning;
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () => context.go('/manager/inspections'),
+                              borderRadius: BorderRadius.circular(12),
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  children: [
+                                    Container(width: 4, color: accentColor),
+                                    Expanded(
+                                      child: ListTile(
+                                        leading: Icon(Icons.assignment_outlined, color: accentColor),
+                                        title: Text(i.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                        subtitle: Text(
+                                          i.isExpired
+                                              ? 'Vypršalo ${i.nextDate != null ? _dateFmt.format(i.nextDate!) : ""}'
+                                              : 'Za ${i.daysUntilNext} dní',
+                                          style: TextStyle(color: accentColor, fontWeight: FontWeight.w500),
+                                        ),
+                                        trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textSecondary),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.textSecondary),
-                            onTap: () => context.go('/manager/inspections'),
-                          ),
-                        )),
+                          );
+                        }),
                         const SizedBox(height: 24),
                       ],
                     );
