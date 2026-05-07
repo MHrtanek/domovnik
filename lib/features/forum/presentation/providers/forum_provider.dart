@@ -50,6 +50,8 @@ class CreateForumPostNotifier extends AsyncNotifier<void> {
             createdBy: profile.id,
             buildingId: profile.buildingId!,
           );
+      await Future.delayed(const Duration(milliseconds: 500));
+      ref.invalidate(forumPostsProvider);
     });
   }
 }
