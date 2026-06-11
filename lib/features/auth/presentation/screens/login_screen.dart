@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,11 +36,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    await _performSignIn(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      rememberMe: _rememberMe,
+    );
+  }
+
+  /// One-tap sign-in using the demo credentials from `.env`
+  /// (DEMO_EMAIL / DEMO_PASSWORD). Lets reviewers explore a pre-seeded
+  /// building without registering.
+  Future<void> _signInAsDemo() async {
+    final email = dotenv.env['DEMO_EMAIL']?.trim() ?? '';
+    final password = dotenv.env['DEMO_PASSWORD'] ?? '';
+    if (email.isEmpty || password.isEmpty) {
+      _showError('Demo účet nie je nakonfigurovaný.');
+      return;
+    }
+    await _performSignIn(email: email, password: password, rememberMe: false);
+  }
+
+  Future<void> _performSignIn({
+    required String email,
+    required String password,
+    required bool rememberMe,
+  }) async {
     setState(() => _isLoading = true);
     try {
       await ref.read(authNotifierProvider.notifier).signIn(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
+            email: email,
+            password: password,
           );
       if (mounted) {
         final authState = ref.read(authNotifierProvider);
@@ -50,7 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               final prefs = await SharedPreferences.getInstance();
               // session_only = true  → odhlásiť pri ďalšom cold-štarte
               // session_only = false → session pretrváva (zapamätať ma)
-              await prefs.setBool('session_only', !_rememberMe);
+              await prefs.setBool('session_only', !rememberMe);
               if (mounted) {
                 context.go('/dashboard');
                 if (kIsWeb) {
@@ -296,6 +322,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ElevatedButton(
                             onPressed: _isLoading ? null : _submit,
                             child: const Text('Prihlásiť sa'),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // ── Vyskúšať demo ─────────────────────────────────
+                          OutlinedButton.icon(
+                            key: const Key('demo_login_button'),
+                            onPressed: _isLoading ? null : _signInAsDemo,
+                            icon: const Icon(Icons.play_circle_outline),
+                            label: const Text('Vyskúšať demo'),
                           ),
                         ],
                       ),
