@@ -1,30 +1,37 @@
-// This is a basic Flutter widget test.
+// Smoke test for the Domovník app shell.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// The full app (`DomovnikApp`) boots a Supabase client and FCM, which aren't
+// available in the test environment. This test instead builds a minimal shell
+// using the app's real theme and Slovak localization to verify those wire up
+// and render without errors.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:domovnik/main.dart';
+import 'package:domovnik/core/theme/app_theme.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('app shell builds with theme and Slovak locale',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        title: 'Domovník',
+        theme: AppTheme.light,
+        locale: const Locale('sk', 'SK'),
+        supportedLocales: const [
+          Locale('sk', 'SK'),
+          Locale('en', 'US'),
+        ],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: const Scaffold(body: Center(child: Text('Domovník'))),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Domovník'), findsOneWidget);
   });
 }
