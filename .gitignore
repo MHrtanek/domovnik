@@ -1,5 +1,12 @@
-build/
-
 # Flutter build
 build/
-.dart_tool/chrome-device/
+.dart_tool/
+
+# Secrets / environment
+.env
+
+# Supabase local CLI state
+supabase/.temp/
+
+# macOS
+.DS_Store
