@@ -7,8 +7,7 @@ final buildingPlanRepositoryProvider = Provider<BuildingPlanRepository>((ref) {
   return BuildingPlanRepository(ref.watch(supabaseClientProvider));
 });
 
-final buildingPlanUrlProvider = StreamProvider<String?>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile?.buildingId == null) return const Stream.empty();
-  return ref.read(buildingPlanRepositoryProvider).getPlanUrl(profile!.buildingId!);
+final buildingPlanUrlProvider = StreamProvider<String?>((ref) async* {
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.read(buildingPlanRepositoryProvider).getPlanUrl(buildingId);
 });

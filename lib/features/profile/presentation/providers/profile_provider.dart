@@ -3,6 +3,22 @@ import '../../data/profile_repository.dart';
 import '../../models/profile_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
+class NoBuildingException implements Exception {
+  const NoBuildingException();
+  @override
+  String toString() => 'Váš účet nie je priradený k budove. Kontaktujte správcu.';
+}
+
+/// Resolves the current user's buildingId, or throws [NoBuildingException]
+/// if the profile has no building assigned. Providers that depend on buildingId
+/// watch this; the error propagates as AsyncError to the UI.
+final buildingIdProvider = FutureProvider<String>((ref) async {
+  final profile = await ref.watch(profileProvider.future);
+  if (profile == null) throw Exception('Profil nie je dostupný');
+  if (profile.buildingId == null) throw const NoBuildingException();
+  return profile.buildingId!;
+});
+
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return ProfileRepository(ref.watch(supabaseClientProvider));
 });

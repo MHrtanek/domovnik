@@ -60,7 +60,7 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
   return buffer
 }
 
-async function sendFcmNotification(token: string, title: string, body: string) {
+async function sendFcmNotification(token: string, title: string, body: string, route?: string) {
   const accessToken = await getAccessToken()
   const res = await fetch(
     `https://fcm.googleapis.com/v1/projects/${SERVICE_ACCOUNT.project_id}/messages:send`,
@@ -74,6 +74,7 @@ async function sendFcmNotification(token: string, title: string, body: string) {
         message: {
           token,
           notification: { title, body },
+          data: route ? { route } : {},
           webpush: {
             notification: {
               title,
@@ -99,7 +100,7 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  let building_id, title, body, exclude_user_id, target_user_id;
+  let building_id, title, body, exclude_user_id, target_user_id, route;
 
   try {
     const text = await req.text();
@@ -110,6 +111,7 @@ serve(async (req) => {
       body = parsed.body;
       exclude_user_id = parsed.exclude_user_id;
       target_user_id = parsed.target_user_id;
+      route = parsed.route;
     }
   } catch (e) {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
@@ -143,7 +145,7 @@ serve(async (req) => {
   const results = []
   for (const profile of profiles ?? []) {
     if (profile.fcm_token) {
-      const result = await sendFcmNotification(profile.fcm_token, title, body)
+      const result = await sendFcmNotification(profile.fcm_token, title, body, route)
       console.log('FCM result:', JSON.stringify(result));
       results.push(result)
     }

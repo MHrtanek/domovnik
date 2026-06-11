@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,13 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
-import '../../../../features/notifications/data/fcm_service.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../features/buildings/presentation/providers/building_provider.dart';
 import '../../../../shared/widgets/app_bar_widget.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/error_widget.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import '../../../../features/buildings/presentation/providers/residents_count_provider.dart';
 
@@ -77,119 +74,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Future<void> _changePassword() async {
-    final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-    bool obscureNew = true;
-    bool obscureConfirm = true;
-    bool saving = false;
-
-    await showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Zmeniť heslo'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: newPasswordController,
-                obscureText: obscureNew,
-                decoration: InputDecoration(
-                  labelText: 'Nové heslo',
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  suffixIcon: IconButton(
-                    icon: Icon(obscureNew ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                    onPressed: () => setDialogState(() => obscureNew = !obscureNew),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: confirmPasswordController,
-                obscureText: obscureConfirm,
-                decoration: InputDecoration(
-                  labelText: 'Potvrdiť heslo',
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  suffixIcon: IconButton(
-                    icon: Icon(obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                    onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => ctx.pop(), child: const Text('Zrušiť')),
-            ElevatedButton(
-              onPressed: saving ? null : () async {
-                final newPass = newPasswordController.text;
-                final confirmPass = confirmPasswordController.text;
-                if (newPass.length < 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Heslo musí mať aspoň 6 znakov'), backgroundColor: AppColors.error),
-                  );
-                  return;
-                }
-                if (newPass != confirmPass) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Heslá sa nezhodujú'), backgroundColor: AppColors.error),
-                  );
-                  return;
-                }
-                setDialogState(() => saving = true);
-                try {
-                  await Supabase.instance.client.auth.updateUser(UserAttributes(password: newPass));
-                  if (ctx.mounted) ctx.pop();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Heslo bolo úspešne zmenené'), backgroundColor: AppColors.success),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Chyba: ${e.toString()}'), backgroundColor: AppColors.error),
-                    );
-                  }
-                } finally {
-                  setDialogState(() => saving = false);
-                }
-              },
-              child: saving
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Zmeniť'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
-  }
-
-  Future<void> _signOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Odhlásiť sa'),
-        content: const Text('Naozaj sa chcete odhlásiť?'),
-        actions: [
-          TextButton(onPressed: () => ctx.pop(false), child: const Text('Zrušiť')),
-          ElevatedButton(
-            onPressed: () => ctx.pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Odhlásiť'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await ref.read(authNotifierProvider.notifier).signOut();
-      if (mounted) context.go('/login');
-    }
-  }
 
   String _generateCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -282,6 +166,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   : const SizedBox.shrink(),
               orElse: () => const SizedBox.shrink(),
             ),
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            tooltip: 'Nastavenia',
+            onPressed: () => context.push('/settings'),
+          ),
         ],
       ),
       body: profileAsync.when(
@@ -501,43 +390,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ],
 
-                const SizedBox(height: 32),
-
-                if (kIsWeb) ...[
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.notifications_outlined),
-                    label: const Text('Povoliť notifikácie'),
-                    onPressed: () async {
-                      await FcmService.requestPermissionAfterInteraction();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Notifikácie nastavené')),
-                        );
-                      }
-                    },
-                  ),
-                ],
-
-                OutlinedButton.icon(
-                  onPressed: _changePassword,
-                  icon: const Icon(Icons.lock_outline, color: AppColors.primary),
-                  label: const Text('Zmeniť heslo', style: TextStyle(color: AppColors.primary)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.primary),
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _signOut,
-                  icon: const Icon(Icons.logout, color: AppColors.error),
-                  label: const Text('Odhlásiť sa', style: TextStyle(color: AppColors.error)),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.error),
-                    minimumSize: const Size(double.infinity, 48),
-                  ),
-                ),
               ],
             ),
           );

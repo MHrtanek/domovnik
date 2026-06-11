@@ -20,7 +20,7 @@ class SupplierTicketsScreen extends ConsumerWidget {
     final filter = ref.watch(ticketFilterProvider);
 
     return Scaffold(
-      appBar: DomovnikAppBar(
+      appBar: const DomovnikAppBar(
         title: 'Moje tikety',
         showBack: false,
         showLogout: true,

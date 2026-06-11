@@ -8,10 +8,9 @@ final pollRepositoryProvider = Provider<PollRepository>((ref) {
   return PollRepository(ref.watch(supabaseClientProvider));
 });
 
-final pollsProvider = StreamProvider<List<PollModel>>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile?.buildingId == null) return const Stream.empty();
-  return ref.read(pollRepositoryProvider).getPolls(profile!.buildingId!);
+final pollsProvider = StreamProvider<List<PollModel>>((ref) async* {
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.read(pollRepositoryProvider).getPolls(buildingId);
 });
 
 final pollDetailProvider =

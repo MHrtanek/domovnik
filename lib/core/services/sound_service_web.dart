@@ -1,11 +1,12 @@
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:js' as js;
+import 'dart:js_interop';
+
+@JS('eval')
+external void _jsEval(JSString code);
 
 /// Plays a short 880 Hz beep via the browser Web Audio API.
 void playNotificationSound() {
   try {
-    js.context.callMethod('eval', [
-      '''(function(){
+    _jsEval('''(function(){
         var C=window.AudioContext||window.webkitAudioContext;
         if(!C)return;
         var ctx=new C();
@@ -19,7 +20,6 @@ void playNotificationSound() {
         gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime+0.4);
-      })()'''
-    ]);
+      })()'''.toJS);
   } catch (_) {}
 }

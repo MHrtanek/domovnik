@@ -12,12 +12,14 @@ class NotificationService {
     required String title,
     required String body,
     String? excludeUserId,
+    String? route,
   }) async {
     await _send({
       'building_id': buildingId,
       'title': title,
       'body': body,
       if (excludeUserId != null) 'exclude_user_id': excludeUserId,
+      if (route != null) 'route': route,
     });
   }
 
@@ -25,11 +27,13 @@ class NotificationService {
     required String targetUserId,
     required String title,
     required String body,
+    String? route,
   }) async {
     await _send({
       'target_user_id': targetUserId,
       'title': title,
       'body': body,
+      if (route != null) 'route': route,
     });
   }
 

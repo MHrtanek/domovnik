@@ -23,7 +23,7 @@ class InspectionsScreen extends ConsumerWidget {
     final isManager = profileAsync.value?.isManager ?? false;
 
     return Scaffold(
-      appBar: DomovnikAppBar(
+      appBar: const DomovnikAppBar(
         title: 'Revízie a termíny',
         showBack: false,
         showLogout: true,
@@ -53,17 +53,17 @@ class InspectionsScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(12),
             children: [
               if (expired.isNotEmpty) ...[
-                _SectionHeader(title: '🔴  Vypršané', color: AppColors.error),
+                const _SectionHeader(title: '🔴  Vypršané', color: AppColors.error),
                 ...expired.map((i) => _InspectionCard(inspection: i, isManager: isManager, ref: ref)),
                 const SizedBox(height: 8),
               ],
               if (expiringSoon.isNotEmpty) ...[
-                _SectionHeader(title: '🟡  Blíži sa termín (do 30 dní)', color: AppColors.warning),
+                const _SectionHeader(title: '🟡  Blíži sa termín (do 30 dní)', color: AppColors.warning),
                 ...expiringSoon.map((i) => _InspectionCard(inspection: i, isManager: isManager, ref: ref)),
                 const SizedBox(height: 8),
               ],
               if (ok.isNotEmpty) ...[
-                _SectionHeader(title: '🟢  V poriadku', color: AppColors.success),
+                const _SectionHeader(title: '🟢  V poriadku', color: AppColors.success),
                 ...ok.map((i) => _InspectionCard(inspection: i, isManager: isManager, ref: ref)),
               ],
             ],

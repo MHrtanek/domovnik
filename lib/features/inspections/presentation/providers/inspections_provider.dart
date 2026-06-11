@@ -8,8 +8,7 @@ final inspectionRepositoryProvider = Provider<InspectionRepository>((ref) {
   return InspectionRepository(Supabase.instance.client);
 });
 
-final inspectionsProvider = StreamProvider<List<InspectionModel>>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile?.buildingId == null) return const Stream.empty();
-  return ref.read(inspectionRepositoryProvider).streamInspections(profile!.buildingId!);
+final inspectionsProvider = StreamProvider<List<InspectionModel>>((ref) async* {
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.read(inspectionRepositoryProvider).streamInspections(buildingId);
 });

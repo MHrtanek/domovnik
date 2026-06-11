@@ -48,6 +48,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       await Supabase.instance.client.auth.updateUser(
         UserAttributes(password: _passwordController.text),
       );
+      await Supabase.instance.client.auth.signOut();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

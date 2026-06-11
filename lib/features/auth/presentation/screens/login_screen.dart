@@ -68,7 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             }
           },
           loading: () {},
-          error: (e, _) => _showError(e.toString()),
+          error: (e, _) => _showError(_mapAuthError(e.toString())),
         );
       }
     } catch (e) {
@@ -84,23 +84,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Obnoviť heslo'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Zadajte váš e-mail a pošleme vám odkaz na obnovenie hesla.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Zadajte váš e-mail a pošleme vám odkaz na obnovenie hesla.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'E-mail',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'E-mail',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-            ),
-          ],
+          ),
         ),
         actions: [
           TextButton(
@@ -136,11 +144,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   String _mapAuthError(String error) {
-    if (error.contains('Invalid login credentials')) {
-      return 'Nesprávny e-mail alebo heslo';
+    if (error.contains('invalid_credentials') || error.contains('Invalid login credentials')) {
+      return 'Nesprávny email alebo heslo.';
     }
-    if (error.contains('Email not confirmed')) {
-      return 'Potvrďte svoju e-mailovú adresu';
+    if (error.contains('email_not_confirmed') || error.contains('Email not confirmed')) {
+      return 'Email nebol potvrdený. Skontrolujte svoju schránku.';
+    }
+    if (error.contains('too_many_requests') || error.contains('Too many requests')) {
+      return 'Príliš veľa pokusov. Skúste neskôr.';
     }
     return 'Prihlásenie zlyhalo. Skúste to znova.';
   }

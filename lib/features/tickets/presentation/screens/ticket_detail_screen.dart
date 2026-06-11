@@ -324,7 +324,7 @@ class _TicketDetailBodyState extends ConsumerState<_TicketDetailBody> {
                     const Text('Zmeniť stav tiketu', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<TicketStatus>(
-                      value: _selectedStatus,
+                      initialValue: _selectedStatus,
                       decoration: const InputDecoration(
                         labelText: 'Stav',
                         prefixIcon: Icon(Icons.edit_outlined),
@@ -459,7 +459,7 @@ class _SupplierAssignCard extends ConsumerWidget {
             const SizedBox(height: 12),
             dodavatelAsync.when(
               data: (dodavatelia) => DropdownButtonFormField<String?>(
-                value: selectedSupplierId,
+                initialValue: selectedSupplierId,
                 decoration: const InputDecoration(
                   labelText: 'Dodávateľ',
                   prefixIcon: Icon(Icons.engineering_outlined),

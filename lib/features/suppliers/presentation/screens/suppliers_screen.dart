@@ -122,7 +122,7 @@ class SuppliersScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    initialValue: selectedCategory,
                     decoration: const InputDecoration(labelText: 'Kategória', prefixIcon: Icon(Icons.category_outlined)),
                     items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                     onChanged: (v) => setState(() => selectedCategory = v),

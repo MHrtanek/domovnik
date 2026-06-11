@@ -3,14 +3,13 @@ import '../../../profile/models/profile_model.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
-final residentsProvider = StreamProvider<List<ProfileModel>>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile?.buildingId == null) return const Stream.empty();
+final residentsProvider = StreamProvider<List<ProfileModel>>((ref) async* {
+  final buildingId = await ref.watch(buildingIdProvider.future);
   final client = ref.watch(supabaseClientProvider);
-  return client
+  yield* client
       .from('profiles')
       .stream(primaryKey: ['id'])
-      .eq('building_id', profile!.buildingId!)
+      .eq('building_id', buildingId)
       .map((rows) => rows
           .map((r) => ProfileModel.fromJson(r))
           .where((p) => p.isResident)

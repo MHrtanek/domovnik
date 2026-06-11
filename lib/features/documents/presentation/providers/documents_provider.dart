@@ -10,14 +10,8 @@ final documentRepositoryProvider = Provider<DocumentRepository>((ref) {
 });
 
 final documentsProvider = StreamProvider<List<DocumentModel>>((ref) async* {
-  final profile = await ref.watch(profileProvider.future);
-  if (profile?.buildingId == null) {
-    yield [];
-    return;
-  }
-  yield* ref
-      .watch(documentRepositoryProvider)
-      .getDocuments(profile!.buildingId!);
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.watch(documentRepositoryProvider).getDocuments(buildingId);
 });
 
 // ── Upload ────────────────────────────────────────────────────────────────

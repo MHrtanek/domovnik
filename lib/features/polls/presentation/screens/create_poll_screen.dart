@@ -231,33 +231,37 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Row(
+                        // Expiry date selector — column layout to avoid overflow on narrow screens
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                _expiresAt != null
-                                    ? 'Do: ${_dateFormat.format(_expiresAt!)}'
-                                    : 'Bez obmedzenia',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                ),
+                            Text(
+                              _expiresAt != null
+                                  ? 'Do: ${_dateFormat.format(_expiresAt!)}'
+                                  : 'Bez obmedzenia',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
                               ),
                             ),
-                            if (_expiresAt != null)
-                              TextButton(
-                                onPressed: () =>
-                                    setState(() => _expiresAt = null),
-                                child: const Text('Zrušiť'),
-                              ),
-                            Flexible(
-                              child: ElevatedButton.icon(
-                                onPressed: _pickExpiryDate,
-                                icon: const Icon(Icons.calendar_today, size: 16),
-                                label: const Text('Vybrať dátum'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.secondary,
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: _pickExpiryDate,
+                                  icon: const Icon(Icons.calendar_today, size: 16),
+                                  label: const Text('Vybrať dátum'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.secondary,
+                                  ),
                                 ),
-                              ),
+                                if (_expiresAt != null) ...[
+                                  const SizedBox(width: 8),
+                                  TextButton(
+                                    onPressed: () => setState(() => _expiresAt = null),
+                                    child: const Text('Zrušiť'),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),

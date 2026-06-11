@@ -8,8 +8,7 @@ final supplierRepositoryProvider = Provider<SupplierRepository>((ref) {
   return SupplierRepository(Supabase.instance.client);
 });
 
-final suppliersProvider = StreamProvider<List<SupplierModel>>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile?.buildingId == null) return const Stream.empty();
-  return ref.read(supplierRepositoryProvider).streamSuppliers(profile!.buildingId!);
+final suppliersProvider = StreamProvider<List<SupplierModel>>((ref) async* {
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.read(supplierRepositoryProvider).streamSuppliers(buildingId);
 });

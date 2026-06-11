@@ -76,6 +76,7 @@ class ChatRepository {
         targetUserId: receiverId,
         title: '💬 Nová správa',
         body: content.length > 100 ? '${content.substring(0, 100)}…' : content,
+        route: '/chat/$senderId',
       );
     } catch (e) {
       debugPrint('ChatRepository.sendMessage → ERROR: $e');

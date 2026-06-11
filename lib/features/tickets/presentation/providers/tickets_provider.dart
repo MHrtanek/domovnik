@@ -21,16 +21,19 @@ final myTicketsProvider =
   return ref.watch(ticketRepositoryProvider).getMyTickets(userId);
 });
 
-final ticketsProvider = StreamProvider<List<TicketModel>>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile == null) return const Stream.empty();
-  if (profile.isManager && profile.buildingId != null) {
-    return ref.read(ticketRepositoryProvider).getTickets(profile.buildingId!);
-  }
+final ticketsProvider = StreamProvider<List<TicketModel>>((ref) async* {
+  final profile = await ref.watch(profileProvider.future);
+  if (profile == null) return;
   if (profile.isSupplier) {
-    return ref.read(ticketRepositoryProvider).getSupplierTickets(profile.id);
+    yield* ref.read(ticketRepositoryProvider).getSupplierTickets(profile.id);
+    return;
   }
-  return ref.read(ticketRepositoryProvider).getMyTickets(profile.id);
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  if (profile.isManager) {
+    yield* ref.read(ticketRepositoryProvider).getTickets(buildingId);
+  } else {
+    yield* ref.read(ticketRepositoryProvider).getMyTickets(profile.id);
+  }
 });
 
 final buildingDodavatelProfilesProvider =

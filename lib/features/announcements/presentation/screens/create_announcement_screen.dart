@@ -56,7 +56,7 @@ class _CreateAnnouncementScreenState
     final remaining = _maxPhotos - _photos.length;
     if (remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Maximálny počet obrázkov je $_maxPhotos'),
           backgroundColor: AppColors.warning,
         ),

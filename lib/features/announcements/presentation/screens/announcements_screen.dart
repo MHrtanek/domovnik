@@ -25,7 +25,7 @@ class AnnouncementsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: DomovnikAppBar(
+      appBar: const DomovnikAppBar(
         title: 'Oznamy',
         showBack: false,
         showLogout: true,

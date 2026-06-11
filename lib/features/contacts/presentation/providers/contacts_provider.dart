@@ -9,14 +9,8 @@ final contactRepositoryProvider = Provider<ContactRepository>((ref) {
 });
 
 final contactsProvider = StreamProvider<List<ContactModel>>((ref) async* {
-  final profile = await ref.watch(profileProvider.future);
-  if (profile?.buildingId == null) {
-    yield [];
-    return;
-  }
-  yield* ref
-      .watch(contactRepositoryProvider)
-      .getContacts(profile!.buildingId!);
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.watch(contactRepositoryProvider).getContacts(buildingId);
 });
 
 // ── Create ────────────────────────────────────────────────────────────────

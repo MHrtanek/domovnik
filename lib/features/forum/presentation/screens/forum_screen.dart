@@ -402,7 +402,7 @@ class _ForumPostDetailScreenState extends ConsumerState<ForumPostDetailScreen> {
           // ── Vstup pre odpoveď ────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(top: BorderSide(color: AppColors.divider)),
             ),

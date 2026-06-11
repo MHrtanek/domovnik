@@ -8,19 +8,20 @@ final reservationRepositoryProvider = Provider<ReservationRepository>((ref) {
   return ReservationRepository(ref.watch(supabaseClientProvider));
 });
 
-final amenitiesProvider = StreamProvider<List<AmenityModel>>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile == null || profile.buildingId == null) return const Stream.empty();
-  return ref.read(reservationRepositoryProvider).getAmenities(profile.buildingId!);
+final amenitiesProvider = StreamProvider<List<AmenityModel>>((ref) async* {
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.read(reservationRepositoryProvider).getAmenities(buildingId);
 });
 
-final allReservationsProvider = StreamProvider<List<ReservationModel>>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile == null || profile.buildingId == null) return const Stream.empty();
+final allReservationsProvider = StreamProvider<List<ReservationModel>>((ref) async* {
+  final profile = await ref.watch(profileProvider.future);
+  if (profile == null) return;
+  final buildingId = await ref.watch(buildingIdProvider.future);
   if (profile.isManager) {
-    return ref.read(reservationRepositoryProvider).getReservations(profile.buildingId!);
+    yield* ref.read(reservationRepositoryProvider).getReservations(buildingId);
+  } else {
+    yield* ref.read(reservationRepositoryProvider).getMyReservations(profile.id);
   }
-  return ref.read(reservationRepositoryProvider).getMyReservations(profile.id);
 });
 
 class CreateReservationNotifier extends AsyncNotifier<void> {

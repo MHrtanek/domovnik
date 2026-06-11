@@ -190,7 +190,7 @@ class ManagerDashboardScreen extends ConsumerWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _SectionHeader(title: '⚠️  Revízie vyžadujú pozornosť', route: '/manager/inspections', ref: ref),
+                        _SectionHeader(title: 'Revízie vyžadujú pozornosť', route: '/manager/inspections', ref: ref, leading: const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18)),
                         const SizedBox(height: 8),
                         ...urgent.map((i) {
                           final accentColor = i.isExpired ? AppColors.error : AppColors.warning;
@@ -284,13 +284,15 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   final String route;
   final WidgetRef ref;
+  final Widget? leading;
 
-  const _SectionHeader({required this.title, required this.route, required this.ref});
+  const _SectionHeader({required this.title, required this.route, required this.ref, this.leading});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
+        if (leading != null) ...[leading!, const SizedBox(width: 6)],
         Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         const Spacer(),
         TextButton(

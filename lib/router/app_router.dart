@@ -8,6 +8,8 @@ import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/profile/presentation/providers/profile_provider.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
+import '../features/profile/presentation/screens/settings_screen.dart';
+import '../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../features/dashboard/presentation/screens/resident_dashboard.dart';
 import '../features/dashboard/presentation/screens/manager_dashboard.dart';
 import '../features/tickets/presentation/screens/tickets_list_screen.dart';
@@ -32,15 +34,22 @@ import '../features/chat/presentation/screens/chat_screen.dart';
 import '../features/residents/presentation/screens/residents_screen.dart';
 import '../features/house_rules/presentation/screens/house_rules_screen.dart';
 import '../features/building_plan/presentation/screens/building_plan_screen.dart';
+import '../features/building_units/presentation/screens/building_units_screen.dart';
+import '../features/feedback/presentation/screens/feedback_screen.dart';
 import '../features/tickets/presentation/screens/supplier_tickets_screen.dart';
 import '../features/forum/presentation/providers/forum_provider.dart';
 import '../core/services/sound_service.dart';
 
 
+/// Global GoRouter instance set on first provider build.
+/// Used by FcmService to navigate from outside the widget tree.
+GoRouter? _appRouterInstance;
+GoRouter? get appRouterInstance => _appRouterInstance;
+
 final routerProvider = Provider<GoRouter>((ref) {
   ref.watch(authStateProvider);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/login',
     debugLogDiagnostics: true,
     redirect: (context, state) async {
@@ -109,6 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/manager/residents', builder: (c, s) => const ResidentsScreen()),
           GoRoute(path: '/manager/house-rules', builder: (c, s) => const HouseRulesScreen()),
           GoRoute(path: '/manager/building-plan', builder: (c, s) => const BuildingPlanScreen()),
+          GoRoute(path: '/manager/building-units', builder: (c, s) => const BuildingUnitsScreen()),
           GoRoute(path: '/manager/tickets/create', builder: (c, s) => const CreateTicketScreen()),
           GoRoute(path: '/manager/tickets/:id', builder: (c, s) => TicketDetailScreen(ticketId: s.pathParameters['id']!)),
         ],
@@ -124,16 +134,36 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // Settings
+      GoRoute(
+        path: '/settings',
+        builder: (c, s) => const SettingsScreen(),
+        routes: [
+          GoRoute(path: 'edit-profile', builder: (c, s) => const EditProfileScreen()),
+        ],
+      ),
+
       // Full-screen routes
       GoRoute(path: '/tickets/create', builder: (c, s) => const CreateTicketScreen()),
       GoRoute(path: '/tickets/:id', builder: (c, s) => TicketDetailScreen(ticketId: s.pathParameters['id']!)),
       GoRoute(path: '/announcements/create', builder: (c, s) => const CreateAnnouncementScreen()),
+      // Deep-link redirect: push notification for announcements → role-specific list
+      GoRoute(
+        path: '/announcements',
+        redirect: (context, state) async {
+          final profile = await ref.read(profileProvider.future);
+          return profile?.isManager == true ? '/manager/announcements' : '/resident/announcements';
+        },
+      ),
       GoRoute(path: '/polls/create', builder: (c, s) => const CreatePollScreen()),
       GoRoute(path: '/reset-password', builder: (c, s) => const ResetPasswordScreen()),
+      GoRoute(path: '/feedback', builder: (c, s) => const FeedbackScreen()),
       GoRoute(path: '/polls/:id', builder: (c, s) => PollDetailScreen(pollId: s.pathParameters['id']!)),
       GoRoute(path: '/chat/:userId', builder: (c, s) => ChatScreen(otherUserId: s.pathParameters['userId']!)),
     ],
   );
+  _appRouterInstance = router;
+  return router;
 });
 
 // ── Dashboard redirect ───────────────────────────────────────────────────────
@@ -212,8 +242,8 @@ class SupplierShell extends ConsumerWidget {
 
   static const _destinations = <NavigationRailDestination>[
     NavigationRailDestination(
-      icon: Icon(Icons.build_outlined),
-      selectedIcon: Icon(Icons.build),
+      icon: Icon(Icons.confirmation_number_outlined),
+      selectedIcon: Icon(Icons.confirmation_number),
       label: Text('Tikety'),
     ),
     NavigationRailDestination(
@@ -284,8 +314,8 @@ class SupplierShell extends ConsumerWidget {
         selectedItemColor: AppColors.primary,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.build_outlined),
-            activeIcon: Icon(Icons.build),
+            icon: Icon(Icons.confirmation_number_outlined),
+            activeIcon: Icon(Icons.confirmation_number),
             label: 'Tikety',
           ),
           BottomNavigationBarItem(
@@ -327,8 +357,8 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
       label: Text('Domov'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.build_outlined),
-      selectedIcon: Icon(Icons.build),
+      icon: Icon(Icons.confirmation_number_outlined),
+      selectedIcon: Icon(Icons.confirmation_number),
       label: Text('Tikety'),
     ),
     NavigationRailDestination(
@@ -436,14 +466,15 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
                       padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
                       child: Text('Ďalšie', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
                     ),
-                    _MoreTile(icon: Icons.campaign_outlined, label: 'Oznamy', onTap: () { setState(() => _moreOpen = false); context.go('/resident/announcements'); }),
-                    _MoreTile(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', onTap: () { setState(() => _moreOpen = false); context.go('/resident/polls'); }),
-                    _MoreTile(icon: Icons.event_available_outlined, label: 'Priestory', onTap: () { setState(() => _moreOpen = false); context.go('/resident/reservations'); }),
-                    _MoreTile(icon: Icons.contacts_outlined, label: 'Kontakty', onTap: () { setState(() => _moreOpen = false); context.go('/resident/contacts'); }),
-                    _MoreTile(icon: Icons.folder_outlined, label: 'Dokumenty', onTap: () { setState(() => _moreOpen = false); context.go('/resident/documents'); }),
-                    _MoreTile(icon: Icons.assignment_outlined, label: 'Revízie', onTap: () { setState(() => _moreOpen = false); context.go('/resident/inspections'); }),
-                    _MoreTile(icon: Icons.menu_book_outlined, label: 'Domový poriadok', onTap: () { setState(() => _moreOpen = false); context.go('/resident/house-rules'); }),
-                    _MoreTile(icon: Icons.apartment_outlined, label: 'Plán budovy', onTap: () { setState(() => _moreOpen = false); context.go('/resident/building-plan'); }),
+                    _MoreTile(icon: Icons.campaign_outlined, label: 'Oznamy', onTap: () { setState(() => _moreOpen = false); context.push('/resident/announcements'); }),
+                    _MoreTile(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', onTap: () { setState(() => _moreOpen = false); context.push('/resident/polls'); }),
+                    _MoreTile(icon: Icons.event_available_outlined, label: 'Priestory', onTap: () { setState(() => _moreOpen = false); context.push('/resident/reservations'); }),
+                    _MoreTile(icon: Icons.contacts_outlined, label: 'Kontakty', onTap: () { setState(() => _moreOpen = false); context.push('/resident/contacts'); }),
+                    _MoreTile(icon: Icons.folder_outlined, label: 'Dokumenty', onTap: () { setState(() => _moreOpen = false); context.push('/resident/documents'); }),
+                    _MoreTile(icon: Icons.assignment_outlined, label: 'Revízie', onTap: () { setState(() => _moreOpen = false); context.push('/resident/inspections'); }),
+                    _MoreTile(icon: Icons.menu_book_outlined, label: 'Domový poriadok', onTap: () { setState(() => _moreOpen = false); context.push('/resident/house-rules'); }),
+                    _MoreTile(icon: Icons.apartment_outlined, label: 'Plán budovy', onTap: () { setState(() => _moreOpen = false); context.push('/resident/building-plan'); }),
+                    _MoreTile(icon: Icons.feedback_outlined, label: 'Feedback', onTap: () { setState(() => _moreOpen = false); context.push('/feedback'); }),
                   ],
                 ),
               ),
@@ -477,8 +508,8 @@ class _ResidentShellState extends ConsumerState<ResidentShell> {
             label: 'Domov',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.build_outlined),
-            activeIcon: Icon(Icons.build),
+            icon: Icon(Icons.confirmation_number_outlined),
+            activeIcon: Icon(Icons.confirmation_number),
             label: 'Tikety',
           ),
           BottomNavigationBarItem(
@@ -535,8 +566,8 @@ class _ManagerShellState extends ConsumerState<ManagerShell> {
       label: Text('Oznamy'),
     ),
     NavigationRailDestination(
-      icon: Icon(Icons.build_outlined),
-      selectedIcon: Icon(Icons.build),
+      icon: Icon(Icons.confirmation_number_outlined),
+      selectedIcon: Icon(Icons.confirmation_number),
       label: Text('Tikety'),
     ),
     NavigationRailDestination(
@@ -562,7 +593,8 @@ class _ManagerShellState extends ConsumerState<ManagerShell> {
         location.startsWith('/manager/forum') ||
         location.startsWith('/manager/residents') ||
         location.startsWith('/manager/house-rules') ||
-        location.startsWith('/manager/building-plan')) {
+        location.startsWith('/manager/building-plan') ||
+        location.startsWith('/manager/building-units')) {
       return 4;
     }
     final idx = _tabs.indexWhere((t) => location.startsWith(t));
@@ -648,16 +680,18 @@ class _ManagerShellState extends ConsumerState<ManagerShell> {
                       padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
                       child: Text('Ďalšie', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey)),
                     ),
-                    _MoreTile(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', onTap: () { setState(() => _moreOpen = false); context.go('/manager/polls'); }),
-                    _MoreTile(icon: Icons.event_available_outlined, label: 'Priestory', onTap: () { setState(() => _moreOpen = false); context.go('/manager/reservations'); }),
-                    _MoreTile(icon: Icons.contacts_outlined, label: 'Kontakty', onTap: () { setState(() => _moreOpen = false); context.go('/manager/contacts'); }),
-                    _MoreTile(icon: Icons.folder_outlined, label: 'Dokumenty', onTap: () { setState(() => _moreOpen = false); context.go('/manager/documents'); }),
-                    _MoreTile(icon: Icons.forum_outlined, label: 'Fórum', onTap: () { setState(() => _moreOpen = false); context.go('/manager/forum'); }),
-                    _MoreTile(icon: Icons.assignment_outlined, label: 'Revízie', onTap: () { setState(() => _moreOpen = false); context.go('/manager/inspections'); }),
-                    _MoreTile(icon: Icons.business_outlined, label: 'Dodávatelia', onTap: () { setState(() => _moreOpen = false); context.go('/manager/suppliers'); }),
-                    _MoreTile(icon: Icons.people_outlined, label: 'Evidencia bytov', onTap: () { setState(() => _moreOpen = false); context.go('/manager/residents'); }),
-                    _MoreTile(icon: Icons.menu_book_outlined, label: 'Domový poriadok', onTap: () { setState(() => _moreOpen = false); context.go('/manager/house-rules'); }),
-                    _MoreTile(icon: Icons.apartment_outlined, label: 'Plán budovy', onTap: () { setState(() => _moreOpen = false); context.go('/manager/building-plan'); }),
+                    _MoreTile(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', onTap: () { setState(() => _moreOpen = false); context.push('/manager/polls'); }),
+                    _MoreTile(icon: Icons.event_available_outlined, label: 'Priestory', onTap: () { setState(() => _moreOpen = false); context.push('/manager/reservations'); }),
+                    _MoreTile(icon: Icons.contacts_outlined, label: 'Kontakty', onTap: () { setState(() => _moreOpen = false); context.push('/manager/contacts'); }),
+                    _MoreTile(icon: Icons.folder_outlined, label: 'Dokumenty', onTap: () { setState(() => _moreOpen = false); context.push('/manager/documents'); }),
+                    _MoreTile(icon: Icons.forum_outlined, label: 'Fórum', onTap: () { setState(() => _moreOpen = false); context.push('/manager/forum'); }),
+                    _MoreTile(icon: Icons.assignment_outlined, label: 'Revízie', onTap: () { setState(() => _moreOpen = false); context.push('/manager/inspections'); }),
+                    _MoreTile(icon: Icons.business_outlined, label: 'Dodávatelia', onTap: () { setState(() => _moreOpen = false); context.push('/manager/suppliers'); }),
+                    _MoreTile(icon: Icons.people_outlined, label: 'Evidencia bytov', onTap: () { setState(() => _moreOpen = false); context.push('/manager/residents'); }),
+                    _MoreTile(icon: Icons.domain_outlined, label: 'Evidencia jednotiek', onTap: () { setState(() => _moreOpen = false); context.push('/manager/building-units'); }),
+                    _MoreTile(icon: Icons.menu_book_outlined, label: 'Domový poriadok', onTap: () { setState(() => _moreOpen = false); context.push('/manager/house-rules'); }),
+                    _MoreTile(icon: Icons.apartment_outlined, label: 'Plán budovy', onTap: () { setState(() => _moreOpen = false); context.push('/manager/building-plan'); }),
+                    _MoreTile(icon: Icons.feedback_outlined, label: 'Feedback', onTap: () { setState(() => _moreOpen = false); context.push('/feedback'); }),
                   ],
                 ),
               ),
@@ -696,8 +730,8 @@ class _ManagerShellState extends ConsumerState<ManagerShell> {
             label: 'Oznamy',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.build_outlined),
-            activeIcon: Icon(Icons.build),
+            icon: Icon(Icons.confirmation_number_outlined),
+            activeIcon: Icon(Icons.confirmation_number),
             label: 'Tikety',
           ),
           BottomNavigationBarItem(
@@ -729,15 +763,16 @@ class ResidentMoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _MoreItem(icon: Icons.campaign_outlined, label: 'Oznamy', route: '/resident/announcements'),
-      _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/resident/polls'),
-      _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/resident/reservations'),
-      _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/resident/contacts'),
-      _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/resident/documents'),
-      _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/resident/inspections', isAlert: true),
-      _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/resident/house-rules'),
-      _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/resident/building-plan'),
-      _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/resident/profile'),
+      const _MoreItem(icon: Icons.campaign_outlined, label: 'Oznamy', route: '/resident/announcements'),
+      const _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/resident/polls'),
+      const _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/resident/reservations'),
+      const _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/resident/contacts'),
+      const _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/resident/documents'),
+      const _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/resident/inspections', isAlert: true),
+      const _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/resident/house-rules'),
+      const _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/resident/building-plan'),
+      const _MoreItem(icon: Icons.feedback_outlined, label: 'Feedback', route: '/feedback'),
+      const _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/resident/profile'),
     ];
 
     return Scaffold(
@@ -758,18 +793,19 @@ class ManagerMoreScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _MoreItem(icon: Icons.chat_outlined, label: 'Správy', route: '/manager/chat'),
-      _MoreItem(icon: Icons.forum_outlined, label: 'Fórum', route: '/manager/forum'),
-      _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/manager/polls'),
-      _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/manager/reservations'),
-      _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/manager/contacts'),
-      _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/manager/documents'),
-      _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/manager/inspections', isAlert: true),
-      _MoreItem(icon: Icons.business_outlined, label: 'Dodávatelia', route: '/manager/suppliers'),
-      _MoreItem(icon: Icons.people_outlined, label: 'Evidencia bytov', route: '/manager/residents'),
-      _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/manager/house-rules'),
-      _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/manager/building-plan'),
-      _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/manager/profile'),
+      const _MoreItem(icon: Icons.forum_outlined, label: 'Fórum', route: '/manager/forum'),
+      const _MoreItem(icon: Icons.how_to_vote_outlined, label: 'Hlasovanie', route: '/manager/polls'),
+      const _MoreItem(icon: Icons.event_available_outlined, label: 'Priestory', route: '/manager/reservations'),
+      const _MoreItem(icon: Icons.contacts_outlined, label: 'Kontakty', route: '/manager/contacts'),
+      const _MoreItem(icon: Icons.folder_outlined, label: 'Dokumenty', route: '/manager/documents'),
+      const _MoreItem(icon: Icons.assignment_outlined, label: 'Revízie', route: '/manager/inspections', isAlert: true),
+      const _MoreItem(icon: Icons.business_outlined, label: 'Dodávatelia', route: '/manager/suppliers'),
+      const _MoreItem(icon: Icons.people_outlined, label: 'Evidencia bytov', route: '/manager/residents'),
+      const _MoreItem(icon: Icons.domain_outlined, label: 'Evidencia jednotiek', route: '/manager/building-units'),
+      const _MoreItem(icon: Icons.menu_book_outlined, label: 'Domový poriadok', route: '/manager/house-rules'),
+      const _MoreItem(icon: Icons.apartment_outlined, label: 'Plán budovy', route: '/manager/building-plan'),
+      const _MoreItem(icon: Icons.feedback_outlined, label: 'Feedback', route: '/feedback'),
+      const _MoreItem(icon: Icons.person_outlined, label: 'Profil', route: '/manager/profile'),
     ];
 
     return Scaffold(
@@ -821,7 +857,7 @@ class _MoreListItem extends StatelessWidget {
       leading: Icon(item.icon, color: color),
       title: Text(item.label),
       trailing: const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
-      onTap: () => context.go(item.route),
+      onTap: () => context.push(item.route),
     );
   }
 }

@@ -86,6 +86,7 @@ class TicketRepository {
         title: '🔧 Nový tiket',
         body: title,
         excludeUserId: createdBy,
+        route: '/tickets/${ticket.id}',
       );
 
       return ticket;
@@ -150,6 +151,7 @@ class TicketRepository {
         targetUserId: ticket.createdBy,
         title: title,
         body: body,
+        route: '/tickets/${ticket.id}',
       );
 
       return ticket;

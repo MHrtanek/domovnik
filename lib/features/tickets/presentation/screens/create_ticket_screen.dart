@@ -44,7 +44,7 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
     final remaining = _maxPhotos - _photos.length;
     if (remaining <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Maximálny počet fotiek je $_maxPhotos'),
           backgroundColor: AppColors.warning,
         ),
@@ -172,7 +172,7 @@ class _CreateTicketScreenState extends ConsumerState<CreateTicketScreen> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<TicketCategory>(
-                          value: _selectedCategory,
+                          initialValue: _selectedCategory,
                           decoration: const InputDecoration(
                             labelText: 'Kategória *',
                             prefixIcon: Icon(Icons.category_outlined),

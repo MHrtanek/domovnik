@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../router/app_router.dart' show appRouterInstance;
+
 // Top-level background handler (required by FCM)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -21,18 +23,36 @@ class FcmService {
     importance: Importance.high,
   );
 
+  // Route stored when navigation is triggered before the router is ready
+  // (terminated-app launch). Consumed by DomovnikApp.initState.
+  static String? _pendingRoute;
+  static String? consumePendingRoute() {
+    final route = _pendingRoute;
+    _pendingRoute = null;
+    return route;
+  }
+
   Future<void> initialize() async {
+    // ── Wire navigation handlers for ALL platforms ────────────────────────
+    // Background tap (app was suspended, user tapped notification)
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageNavigation);
+
+    // Terminated launch (app was killed, opened by tapping a notification)
+    final initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) _handleMessageNavigation(initialMessage);
+
     if (kIsWeb) {
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('FCM foreground: ${message.notification?.title}');
+      // On web, FCM shows browser notifications via the SW automatically.
+      // Foreground messages just log; background navigation handled above.
+      FirebaseMessaging.onMessage.listen((msg) {
+        debugPrint('FCM foreground: ${msg.notification?.title}');
       });
       return;
     }
 
-    // Register background handler
+    // ── Native-only setup ─────────────────────────────────────────────────
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-    // Initialize local notifications
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -49,13 +69,11 @@ class FcmService {
       onDidReceiveNotificationResponse: _onNotificationTap,
     );
 
-    // Create Android notification channel
     await _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
 
-    // Set foreground notification presentation options (iOS)
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,
@@ -109,29 +127,14 @@ class FcmService {
   }
 
   Future<void> setupMessageHandlers() async {
-    // Foreground messages
+    // Foreground messages → show local notification (native only)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('FCM foreground message: ${message.messageId}');
       _showLocalNotification(message);
     });
 
-    // When app is opened from background via notification tap
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint('FCM opened from background: ${message.messageId}');
-      _handleMessageNavigation(message);
-    });
-
-    // Check if app was opened from terminated state via notification
-    final initialMessage = await _messaging.getInitialMessage();
-    if (initialMessage != null) {
-      debugPrint('FCM initial message: ${initialMessage.messageId}');
-      _handleMessageNavigation(initialMessage);
-    }
-
     // Token refresh
-    _messaging.onTokenRefresh.listen((newToken) {
-      saveFcmTokenToProfile(newToken);
-    });
+    _messaging.onTokenRefresh.listen(saveFcmTokenToProfile);
   }
 
   void _showLocalNotification(RemoteMessage message) {
@@ -163,17 +166,26 @@ class FcmService {
 
   void _onNotificationTap(NotificationResponse response) {
     final route = response.payload;
-    if (route != null) {
-      debugPrint('Notification tapped, navigating to: $route');
-      // Navigation handled via navigatorKey in app.dart
-    }
+    if (route == null) return;
+    debugPrint('Notification tapped, navigating to: $route');
+    _navigate(route);
   }
 
   void _handleMessageNavigation(RemoteMessage message) {
     final route = message.data['route'] as String?;
-    if (route != null) {
-      debugPrint('FCM navigation to: $route');
-      // Navigation handled via global router key
+    if (route == null) return;
+    debugPrint('FCM navigation to: $route');
+    _navigate(route);
+  }
+
+  void _navigate(String route) {
+    final router = appRouterInstance;
+    if (router != null) {
+      router.go(route);
+    } else {
+      // Router not ready yet (terminated-app launch). DomovnikApp.initState
+      // will consume this and navigate after the first frame.
+      _pendingRoute = route;
     }
   }
 

@@ -53,6 +53,7 @@ class AnnouncementRepository {
         title: '📢 Nový oznam',
         body: title,
         excludeUserId: createdBy,
+        route: '/announcements',
       );
 
       return announcement;

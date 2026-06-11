@@ -14,13 +14,12 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 // ── Správy ───────────────────────────────────────────────────────────────────
 
 final chatMessagesProvider =
-    StreamProvider.family<List<MessageModel>, String>((ref, otherUserId) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile == null || profile.buildingId == null) {
-    return const Stream.empty();
-  }
-  return ref.read(chatRepositoryProvider).getMessages(
-    buildingId: profile.buildingId!,
+    StreamProvider.family<List<MessageModel>, String>((ref, otherUserId) async* {
+  final profile = await ref.watch(profileProvider.future);
+  if (profile == null) return;
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.read(chatRepositoryProvider).getMessages(
+    buildingId: buildingId,
     currentUserId: profile.id,
     otherUserId: otherUserId,
   );
@@ -80,11 +79,10 @@ class ConversationEntry {
   });
 }
 
-final conversationsProvider = StreamProvider<List<ConversationEntry>>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile == null || profile.buildingId == null) return const Stream.empty();
-
-  final buildingId = profile.buildingId!;
+final conversationsProvider = StreamProvider<List<ConversationEntry>>((ref) async* {
+  final profile = await ref.watch(profileProvider.future);
+  if (profile == null) return;
+  final buildingId = await ref.watch(buildingIdProvider.future);
   final chatRepo   = ref.read(chatRepositoryProvider);
   final profileRepo = ref.read(profileRepositoryProvider);
 
@@ -98,7 +96,7 @@ final conversationsProvider = StreamProvider<List<ConversationEntry>>((ref) {
 
   // switchMap (rxdart): každý nový event zruší predchádzajúci beh —
   // zabraňuje zahadzovaniu eventov na broadcast streame pri asyncMap.
-  return trigger.switchMap((_) => Stream.fromFuture(() async {
+  yield* trigger.switchMap((_) => Stream.fromFuture(() async {
     final List<ProfileModel> contacts;
     if (profile.isManager) {
       contacts = await profileRepo.getResidents(buildingId);

@@ -7,8 +7,7 @@ final houseRulesRepositoryProvider = Provider<HouseRulesRepository>((ref) {
   return HouseRulesRepository(ref.watch(supabaseClientProvider));
 });
 
-final houseRulesProvider = StreamProvider<String>((ref) {
-  final profile = ref.watch(profileProvider).valueOrNull;
-  if (profile?.buildingId == null) return const Stream.empty();
-  return ref.read(houseRulesRepositoryProvider).getHouseRules(profile!.buildingId!);
+final houseRulesProvider = StreamProvider<String>((ref) async* {
+  final buildingId = await ref.watch(buildingIdProvider.future);
+  yield* ref.read(houseRulesRepositoryProvider).getHouseRules(buildingId);
 });
