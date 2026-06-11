@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Pinned to match the Flutter version that resolved pubspec.lock
+# (requires Flutter >= 3.38.4 / Dart >= 3.10.3).
+env:
+  FLUTTER_VERSION: "3.44.0"
+
+jobs:
+  build:
+    name: Analyze, test & build web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      # The app loads .env via flutter_dotenv and bundles it as an asset
+      # (see pubspec.yaml), so a file must exist for `flutter build web`.
+      # These are throwaway values — CI never connects to Supabase.
+      - name: Generate dummy .env
+        run: |
+          cat > .env <<'EOF'
+          SUPABASE_URL=https://example.supabase.co
+          SUPABASE_ANON_KEY=dummy-anon-key
+          DEMO_EMAIL=demo@example.com
+          DEMO_PASSWORD=dummy-password
+          EOF
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build web
+        run: flutter build web --release

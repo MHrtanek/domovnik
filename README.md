@@ -1,5 +1,7 @@
 # Domovník
 
+[![CI](https://github.com/MHrtanek/domovnik/actions/workflows/ci.yml/badge.svg)](https://github.com/MHrtanek/domovnik/actions/workflows/ci.yml)
+
 **A property-management app for Slovak apartment buildings — connecting residents, building managers, and suppliers in one place.**
 
 Domovník ("building custodian") digitises the day-to-day running of a residential building: reporting maintenance issues, posting announcements, running votes, booking shared amenities, and keeping documents and contacts in one place. It is a Flutter app targeting **web and Android** from a single codebase, backed by Supabase.
