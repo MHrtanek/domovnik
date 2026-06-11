@@ -45,11 +45,14 @@ Profile is authoritative: manager vs. resident role determines which shell route
 
 ## Navigation (GoRouter)
 
-Two shell routes in `lib/router/`:
-- **ResidentShell** — bottom nav: Announcements → Tickets → Forum → Polls → More
-- **ManagerShell** — bottom nav: Dashboard → Announcements → Tickets → Forum → More
+Three shell routes in `lib/router/`:
+- **ResidentShell** — bottom nav: Dashboard · Tikety · Fórum · Správy (Chat) · Ďalšie
+- **ManagerShell** — bottom nav: Prehľad · Oznamy · Tikety · Správy (Chat) · Ďalšie
+- **SupplierShell** — bottom nav: Tikety · Profil (no drawer)
 
-Route guards redirect to `/login` if unauthenticated, and to the correct shell based on `profile.isManager`. On desktop (width > 600px), a `NavigationRail` replaces the bottom nav bar.
+The "Ďalšie" tab opens a collapsible drawer with secondary destinations. For residents: Announcements, Polls, Reservations, Contacts, Documents, Inspections, Profile, House Rules, Building Plan, Feedback. For managers: Polls, Reservations, Contacts, Documents, Forum, Inspections, Suppliers, Residents, Building Units, House Rules, Building Plan, Feedback.
+
+Route guards redirect to `/login` if unauthenticated, and to the correct shell based on `profile.isManager` / `profile.role`. On desktop (width > 600px), a `NavigationRail` replaces the bottom nav bar.
 
 ## Backend (Supabase)
 
