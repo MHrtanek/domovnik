@@ -11,6 +11,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_error_mapper.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -94,11 +95,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             }
           },
           loading: () {},
-          error: (e, _) => _showError(_mapAuthError(e.toString())),
+          error: (e, _) => _showError(mapAuthError(e.toString())),
         );
       }
     } catch (e) {
-      if (mounted) _showError(_mapAuthError(e.toString()));
+      if (mounted) _showError(mapAuthError(e.toString()));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -167,19 +168,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted) _showError('Nepodarilo sa odoslať email. Skúste znova.');
       }
     }
-  }
-
-  String _mapAuthError(String error) {
-    if (error.contains('invalid_credentials') || error.contains('Invalid login credentials')) {
-      return 'Nesprávny email alebo heslo.';
-    }
-    if (error.contains('email_not_confirmed') || error.contains('Email not confirmed')) {
-      return 'Email nebol potvrdený. Skontrolujte svoju schránku.';
-    }
-    if (error.contains('too_many_requests') || error.contains('Too many requests')) {
-      return 'Príliš veľa pokusov. Skúste neskôr.';
-    }
-    return 'Prihlásenie zlyhalo. Skúste to znova.';
   }
 
   void _showError(String message) {
